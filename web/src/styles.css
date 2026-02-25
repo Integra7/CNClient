@@ -930,6 +930,11 @@ h1 {
   line-height: 1.35;
 }
 
+.message .meta-forward-by {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
 .message .meta-forward-original {
   font-size: 10px;
   opacity: 0.9;

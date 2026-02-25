@@ -528,11 +528,13 @@ function handleServerMessage(msg: ServerMessage): void {
           if (m.isDeleted) continue;
           if (existingIds.has(m.id)) continue;
           existingIds.add(m.id);
+          const sm = m as MessageFromServer & { senderUsername?: string | null };
           list.push({
             id: m.id,
             clientMessageId: m.clientMessageId ?? undefined,
             chatId: m.chatId,
             senderId: m.senderId,
+            senderUsername: sm.senderUsername ?? undefined,
             content: m.content,
             sequenceNumber: m.sequenceNumber,
             timestamp: m.timestamp ?? m.createdAt ?? m.updatedAt ?? 0,
@@ -640,6 +642,7 @@ function handleServerMessage(msg: ServerMessage): void {
             clientMessageId: msg.clientMessageId,
             chatId: msg.chatId,
             senderId: msg.senderId,
+            senderUsername: extendedMsg.senderUsername ?? undefined,
             content: msg.content,
             sequenceNumber: msg.sequenceNumber,
             timestamp: msg.timestamp ?? Date.now(),
@@ -804,8 +807,10 @@ function renderMessages(chatId: string): void {
       const status = m.status === 'sending' ? '⏳' : m.status === 'failed' ? '❌' : '';
       const editedLabel = m.editedAt ? '<span class="meta-edited">ред.</span>' : '';
       const origTs = m.forwardFrom?.originalTimestamp;
+      const forwardedBy = m.senderUsername ? `Переслал: ${escapeHtml(m.senderUsername)}` : '';
       const forwardLines = m.forwardFrom
         ? [
+            forwardedBy ? `<span class="meta-forward-by">${forwardedBy}</span>` : '',
             `<span class="meta-forward">Переслано от ${escapeHtml(m.forwardFrom.senderName)}</span>`,
             origTs != null ? `<span class="meta-forward-original">Оригинал: ${formatTime(origTs)}</span>` : '',
           ].filter(Boolean).join('<br/>')

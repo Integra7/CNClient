@@ -32,6 +32,7 @@ export interface DisplayMessage {
   clientMessageId?: string;
   chatId: string;
   senderId: string;
+  senderUsername?: string;
   content: string;
   sequenceNumber?: number;
   timestamp: number;
@@ -63,17 +64,16 @@ export interface MessageFromServer {
   id: string;
   chatId: string;
   senderId: string;
+  senderUsername?: string | null;
   content: string;
   clientMessageId: string | null;
   sequenceNumber: number;
   createdAt: number;
   updatedAt: number;
-  /** В реальном времени бэкенд может присылать timestamp вместо createdAt */
   timestamp?: number;
   status: string;
   isDeleted: boolean;
   editedAt?: number;
-  /** Поля пересланных сообщений (API бэкенда) */
   isForwarded?: boolean;
   forwardFromSenderId?: string | null;
   forwardFromSenderName?: string | null;
