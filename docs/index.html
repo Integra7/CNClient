@@ -8,8 +8,8 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Unbounded:wght@400;500;600&display=swap" rel="stylesheet" />
-    <script type="module" crossorigin src="/CNClient/assets/index-BM8kMruK.js"></script>
-    <link rel="stylesheet" crossorigin href="/CNClient/assets/index-CFvXE-j3.css">
+    <script type="module" crossorigin src="/CNClient/assets/index-DxsYN9Y0.js"></script>
+    <link rel="stylesheet" crossorigin href="/CNClient/assets/index-DpimIyRH.css">
   </head>
   <body>
     <div id="login-screen" class="login-screen">
@@ -77,6 +77,11 @@
               <button id="chat-back-btn" type="button" class="chat-back-btn" aria-label="К списку чатов">← Чаты</button>
               <div id="chat-header"></div>
             </div>
+            <div id="messages-selection-toolbar" class="selection-toolbar" hidden>
+              <button type="button" id="selection-delete-btn">Удалить</button>
+              <button type="button" id="selection-forward-btn">Переслать</button>
+              <button type="button" id="selection-cancel-btn">Отменить</button>
+            </div>
             <div id="messages"></div>
             <div class="send-row">
               <input id="message-input" type="text" placeholder="Сообщение..." />
@@ -84,6 +89,45 @@
             </div>
           </div>
         </main>
+      </div>
+      <div id="context-menu" class="context-menu" hidden>
+        <button type="button" data-action="delete">Удалить</button>
+        <button type="button" data-action="edit">Редактировать</button>
+        <button type="button" data-action="forward">Переслать</button>
+        <button type="button" data-action="delete-chat" id="context-menu-delete-chat" hidden>Удалить чат</button>
+      </div>
+      <div id="modal-overlay" class="modal-overlay" hidden>
+        <div id="modal-delete-messages" class="modal" hidden>
+          <p id="modal-delete-messages-text"></p>
+          <label id="modal-delete-messages-for-all-wrap" class="modal-checkbox" hidden><input type="checkbox" id="modal-delete-messages-for-all" /> Удалить у всех</label>
+          <div class="modal-buttons">
+            <button type="button" id="modal-delete-messages-ok">Удалить</button>
+            <button type="button" id="modal-delete-messages-cancel">Отмена</button>
+          </div>
+        </div>
+        <div id="modal-delete-chat" class="modal" hidden>
+          <p>Удалить чат?</p>
+          <label class="modal-checkbox"><input type="checkbox" id="modal-delete-chat-for-both" /> Удалить у обоих участников</label>
+          <div class="modal-buttons">
+            <button type="button" id="modal-delete-chat-ok">Удалить</button>
+            <button type="button" id="modal-delete-chat-cancel">Отмена</button>
+          </div>
+        </div>
+        <div id="modal-forward" class="modal" hidden>
+          <p>Переслать в чат:</p>
+          <ul id="modal-forward-chat-list" class="modal-chat-list"></ul>
+          <div class="modal-buttons">
+            <button type="button" id="modal-forward-cancel">Отмена</button>
+          </div>
+        </div>
+        <div id="modal-edit-message" class="modal" hidden>
+          <p>Редактировать сообщение:</p>
+          <input type="text" id="modal-edit-message-input" />
+          <div class="modal-buttons">
+            <button type="button" id="modal-edit-message-ok">Сохранить</button>
+            <button type="button" id="modal-edit-message-cancel">Отмена</button>
+          </div>
+        </div>
       </div>
     </div>
   </body>
