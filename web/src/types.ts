@@ -68,6 +68,8 @@ export interface MessageFromServer {
   sequenceNumber: number;
   createdAt: number;
   updatedAt: number;
+  /** В реальном времени бэкенд может присылать timestamp вместо createdAt */
+  timestamp?: number;
   status: string;
   isDeleted: boolean;
   editedAt?: number;
@@ -77,4 +79,6 @@ export interface MessageFromServer {
   forwardFromSenderName?: string | null;
   forwardFromChatId?: string | null;
   forwardFromTimestamp?: number | null;
+  /** Один id на всю пачку пересланных (одно действие пересылки) */
+  forwardBatchId?: string | null;
 }

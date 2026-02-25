@@ -535,11 +535,12 @@ function handleServerMessage(msg: ServerMessage): void {
             senderId: m.senderId,
             content: m.content,
             sequenceNumber: m.sequenceNumber,
-            timestamp: m.createdAt ?? m.updatedAt ?? 0,
+            timestamp: m.timestamp ?? m.createdAt ?? m.updatedAt ?? 0,
             status: 'sent',
             isOwn: m.senderId === currentUserId,
             editedAt: m.editedAt,
             forwardFrom: mapForwardFrom(m),
+            forwardBatchId: (m.forwardBatchId != null && m.forwardBatchId !== '') ? m.forwardBatchId : undefined,
           });
         }
         list.sort((a, b) => a.timestamp - b.timestamp);
@@ -632,6 +633,7 @@ function handleServerMessage(msg: ServerMessage): void {
             forwardFromSenderId?: string | null;
             forwardFromSenderName?: string | null;
             forwardFromTimestamp?: number | null;
+            forwardBatchId?: string | null;
           };
           list.push({
             id: msg.id ?? crypto.randomUUID(),
@@ -645,6 +647,7 @@ function handleServerMessage(msg: ServerMessage): void {
             isOwn: msg.senderId === currentUserId,
             editedAt: ext.editedAt,
             forwardFrom: mapForwardFrom(ext),
+            forwardBatchId: (ext.forwardBatchId != null && ext.forwardBatchId !== '') ? ext.forwardBatchId : undefined,
           });
           list.sort((a, b) => a.timestamp - b.timestamp);
           messagesByChat.set(msg.chatId, list);
@@ -763,11 +766,12 @@ function renderMessages(chatId: string): void {
 
   const groups: DisplayMessage[][] = [];
   let run: DisplayMessage[] = [];
+  /** Один блок = одно действие пересылки (все сообщения пачки, от одного или разных людей). */
   const groupKey = (x: DisplayMessage): string | null => {
     if (!x.forwardFrom) return null;
-    return x.forwardBatchId != null
-      ? `${x.forwardBatchId}:${x.forwardFrom.senderId}`
-      : `fwd:${x.forwardFrom.senderId}`;
+    const bid = x.forwardBatchId;
+    if (bid != null && bid !== '') return bid;
+    return `ts:${x.timestamp}`;
   };
   for (const m of combined) {
     const bid = groupKey(m);
@@ -786,7 +790,7 @@ function renderMessages(chatId: string): void {
 
   for (const group of groups) {
     const first = group[0];
-    const useBlock = group.length > 1 && (first?.forwardFrom != null);
+    const useBlock = group.length >= 1 && (first?.forwardFrom != null);
     const container = useBlock ? document.createElement('div') : null;
     if (container) {
       container.className = 'forwarded-block';
