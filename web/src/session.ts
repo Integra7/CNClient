@@ -1,10 +1,5 @@
-/**
- * Сессия: токен хранится в cookie и localStorage.
- * Cookie даёт сохранение после закрытия вкладки на мобильных.
- */
-
 const COOKIE_NAME = 'cn_token';
-const COOKIE_MAX_AGE_DAYS = 365; // 1 год
+const COOKIE_MAX_AGE_DAYS = 365;
 const STORAGE_KEY = 'cn_token';
 
 function getCookie(name: string): string | null {
@@ -23,20 +18,17 @@ function deleteCookie(name: string): void {
   document.cookie = `${name}=; path=/; max-age=0`;
 }
 
-/** Сохранить токен сессии (cookie + localStorage) */
 export function setSessionToken(token: string): void {
   setCookie(COOKIE_NAME, token, COOKIE_MAX_AGE_DAYS);
   localStorage.setItem(STORAGE_KEY, token);
 }
 
-/** Получить токен: сначала из cookie, затем из localStorage */
 export function getSessionToken(): string | null {
   const fromCookie = getCookie(COOKIE_NAME);
   if (fromCookie) return fromCookie;
   return localStorage.getItem(STORAGE_KEY);
 }
 
-/** Очистить сессию (выход) */
 export function clearSessionToken(): void {
   deleteCookie(COOKIE_NAME);
   localStorage.removeItem(STORAGE_KEY);

@@ -28,7 +28,6 @@ body {
   line-height: 1.5;
 }
 
-/* Экран входа: полностью скрыт, когда пользователь залогинен */
 .login-screen[hidden] {
   display: none !important;
 }
@@ -184,7 +183,6 @@ body {
   color: var(--error);
 }
 
-/* Основное приложение: полностью скрыто, когда пользователь не залогинен */
 .app-main[hidden] {
   display: none !important;
 }
@@ -229,7 +227,6 @@ h1 {
   letter-spacing: -0.02em;
 }
 
-/* Connection */
 .connection {
   display: flex;
   flex-wrap: wrap;
@@ -305,7 +302,6 @@ h1 {
   color: var(--text-muted);
 }
 
-/* Create user */
 #create-user {
   margin-bottom: 24px;
   padding: 16px;
@@ -404,7 +400,6 @@ h1 {
   background: var(--accent-hover);
 }
 
-/* Chat section: sidebar + main */
 #chat-section {
   display: flex;
   flex: 1;
@@ -590,7 +585,6 @@ h1 {
   background: var(--bg);
 }
 
-/* Подсказка: показывать только когда НЕ в чате (ни один чат не выбран) */
 #chat-placeholder[hidden] {
   display: none !important;
 }
@@ -606,7 +600,6 @@ h1 {
   padding: 24px;
 }
 
-/* Окно чата: когда открыт — занимает всё доступное место */
 #chat-panel[hidden] {
   display: none !important;
 }
@@ -628,7 +621,7 @@ h1 {
 }
 
 .chat-back-btn {
-  display: none; /* Показывается только на мобильных */
+  display: none;
 }
 
 #chat-header {
@@ -734,7 +727,6 @@ h1 {
   background: var(--accent-hover);
 }
 
-/* ——— Мобильные: один столбец, переключение список ↔ чат ——— */
 @media (max-width: 768px) {
   body {
     font-size: 15px;
@@ -752,7 +744,6 @@ h1 {
     padding: 24px 20px;
   }
 
-  /* Блок регистрации: удобные отступы и поля на мобильных */
   #register-block.form-block {
     margin-top: 8px;
   }
@@ -782,7 +773,6 @@ h1 {
     padding: 14px;
   }
 
-  /* Кнопки-ссылки (Назад, Регистрироваться) — удобная зона нажатия */
   .link-btn,
   .back-link {
     min-height: 44px;
@@ -830,7 +820,6 @@ h1 {
     position: relative;
   }
 
-  /* В режиме списка на мобильных показываем только сайдбар (список чатов) */
   #chat-section:not(.chat-open) .chat-main {
     display: none;
   }
@@ -855,7 +844,6 @@ h1 {
     padding-bottom: max(16px, env(safe-area-inset-bottom));
   }
 
-  /* На мобильных при открытом чате скрываем список, показываем только чат */
   #chat-section.chat-open .sidebar {
     display: none;
   }
@@ -957,7 +945,6 @@ h1 {
   }
 }
 
-/* ——— In-page toast (как в Telegram на ПК) ——— */
 .cn-toast {
   position: fixed;
   top: 16px;

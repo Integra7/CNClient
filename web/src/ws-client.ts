@@ -55,9 +55,7 @@ export class ChatWsClient {
           this.clearAckTimeout(msg.clientMessageId);
         }
         this.onMessage(msg);
-      } catch {
-        // ignore parse errors
-      }
+      } catch {}
     };
 
     this.ws.onclose = () => {
@@ -66,9 +64,7 @@ export class ChatWsClient {
       this.scheduleReconnect();
     };
 
-    this.ws.onerror = () => {
-      // close will be fired after error
-    };
+    this.ws.onerror = () => {};
   }
 
   private scheduleReconnect(): void {
@@ -149,7 +145,6 @@ export class ChatWsClient {
     });
   }
 
-  /** Вход по учётным данным (бэкенд должен вернуть login_success с id) */
   login(username: string, password: string): void {
     this.send({
       type: 'login',
@@ -157,7 +152,6 @@ export class ChatWsClient {
     });
   }
 
-  /** Проверить существование пользователя по username (ответ: user_found или error) */
   findUser(username: string): void {
     this.send({
       type: 'find_user',
@@ -165,7 +159,6 @@ export class ChatWsClient {
     });
   }
 
-  /** Получить или создать личный чат с пользователем по username (если бэкенд поддерживает) */
   getOrCreatePrivateChat(username: string): void {
     this.send({
       type: 'get_or_create_private_chat',
@@ -173,7 +166,6 @@ export class ChatWsClient {
     });
   }
 
-  /** Первое сообщение пользователю по username — бэкенд создаёт чат и может вернуть chatId в ack */
   sendMessageToUser(recipientUsername: string, content: string, clientMessageId: string): void {
     this.send({
       type: 'message_to_user',

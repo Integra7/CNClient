@@ -1,6 +1,3 @@
-/**
- * Сообщения от клиента к серверу (ClientMessage)
- */
 export interface ClientMessage {
   type: string;
   chatId?: string;
@@ -8,9 +5,6 @@ export interface ClientMessage {
   clientMessageId?: string;
 }
 
-/**
- * Сообщения от сервера к клиенту (ServerMessage)
- */
 export interface ServerMessage {
   type: string;
   id?: string;
@@ -51,7 +45,6 @@ export interface CreateUserPayload {
   password: string;
 }
 
-/** Чат из ответа get_chats (chats_list) */
 export interface ChatFromServer {
   id: string;
   name: string | null;
@@ -62,7 +55,6 @@ export interface ChatFromServer {
   lastMessageTime: number | null;
 }
 
-/** Сообщение из ответа get_messages (messages_list) */
 export interface MessageFromServer {
   id: string;
   chatId: string;

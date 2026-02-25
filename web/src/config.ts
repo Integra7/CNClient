@@ -1,18 +1,10 @@
-// Адрес бэкенда WebSocket
-// Можно задать через переменную окружения VITE_WS_URL
-// Или использовать автоматическое определение
 const getBackendUrl = (): string => {
-  // 1. Проверяем переменную окружения (для деплоя)
   if (import.meta.env.VITE_WS_URL) {
     return import.meta.env.VITE_WS_URL;
   }
-  
-  // 2. В режиме разработки используем localhost
   if (import.meta.env.DEV) {
     return 'ws://localhost:8080/chat';
   }
-  
-  // 3. В production — бэкенд на Serveo
   const host = 'cosanostra.serveousercontent.com';
   return `wss://${host}/chat`;
 };

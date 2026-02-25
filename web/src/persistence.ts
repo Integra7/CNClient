@@ -45,7 +45,6 @@ export function saveChatNames(userId: string, names: Record<string, string>): vo
   localStorage.setItem(key, JSON.stringify(names));
 }
 
-/** Время последнего прочтения по чатам (chatId -> timestamp). Для счётчика непрочитанных. */
 export function loadLastRead(userId: string): Record<string, number> {
   const key = `${STORAGE_LAST_READ_PREFIX}${userId}`;
   try {

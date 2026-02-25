@@ -18,7 +18,6 @@ import {
 } from './persistence';
 import './styles.css';
 
-/** Звук при входящем сообщении (файл в public/sounds) */
 const NOTIFICATION_SOUND_URL = `${import.meta.env.BASE_URL}sounds/when-604.mp3`;
 
 function playNotificationSound(): void {
@@ -26,12 +25,9 @@ function playNotificationSound(): void {
     const audio = new Audio(NOTIFICATION_SOUND_URL);
     audio.volume = 0.6;
     audio.play().catch(() => {});
-  } catch {
-    // игнор при ошибке (автоплей может быть заблокирован)
-  }
+  } catch {}
 }
 
-/** Показать уведомление о новом сообщении: вкладка в фоне — системное; вкладка активна — тост в стиле Telegram */
 function showMessageNotification(senderName: string, bodyPreview: string): void {
   const isTabVisible = document.visibilityState === 'visible';
 
@@ -52,13 +48,10 @@ function showMessageNotification(senderName: string, bodyPreview: string): void 
         n.close();
       };
       setTimeout(() => n.close(), 5000);
-    } catch {
-      // игнор
-    }
+    } catch {}
   }
 }
 
-/** Тост в интерфейсе (ПК — как в Telegram) */
 function showInPageToast(title: string, body: string): void {
   const toast = document.createElement('div');
   toast.className = 'cn-toast';
@@ -79,7 +72,6 @@ function showInPageToast(title: string, body: string): void {
   }, 4000);
 }
 
-// Экран входа
 const loginScreen = document.getElementById('login-screen') as HTMLElement;
 const appMain = document.getElementById('app-main') as HTMLElement;
 const loginUsername = document.getElementById('login-username') as HTMLInputElement;
@@ -100,7 +92,6 @@ const hideRegisterBtn = document.getElementById('hide-register-btn') as HTMLButt
 const notificationsBtn = document.getElementById('notifications-btn') as HTMLButtonElement;
 const logoutBtn = document.getElementById('logout-btn') as HTMLButtonElement;
 
-// Основное приложение
 const statusEl = document.getElementById('status') as HTMLElement;
 const disconnectBtn = document.getElementById('disconnect') as HTMLButtonElement;
 const chatSection = document.getElementById('chat-section') as HTMLElement;
@@ -124,15 +115,11 @@ let currentUserId: string = '';
 let selectedChatId: string = '';
 let composeToUsername: string | null = null;
 let pendingUsernameForChat: string | null = null;
-/** Ожидаем user_found для этого username, затем откроем чат */
 let pendingOpenComposeUsername: string | null = null;
 let findUserDebounceTimer: ReturnType<typeof setTimeout> | null = null;
-/** Таймаут показа ошибки при входе/регистрации, если сокет не открылся */
 let authConnectionTimeout: ReturnType<typeof setTimeout> | null = null;
 
-/** Время последнего прочтения по chatId (для подсчёта непрочитанных) */
 let lastReadByChat: Record<string, number> = {};
-/** Количество непрочитанных сообщений по chatId */
 let unreadByChat: Record<string, number> = {};
 
 function persistMessages(): void {
@@ -143,7 +130,6 @@ function persistChatNames(): void {
   if (currentUserId) saveChatNames(currentUserId, chatNames);
 }
 
-/** Пересчитать непрочитанные из сообщений и lastRead (при загрузке) */
 function recomputeUnreadFromMessages(): void {
   unreadByChat = {};
   for (const [chatId, list] of messagesByChat) {
@@ -153,7 +139,6 @@ function recomputeUnreadFromMessages(): void {
   }
 }
 
-/** Обновить текст кнопки «← Чаты» на мобильных (общее кол-во непрочитанных) */
 function updateBackButtonUnread(): void {
   const total = Object.values(unreadByChat).reduce((s, n) => s + n, 0);
   chatBackBtn.textContent = total > 0 ? `← Чаты (${total})` : '← Чаты';
@@ -262,7 +247,6 @@ function selectChat(chatId: string): void {
   messageInput.focus();
 }
 
-/** Найти chatId чата с пользователем по его username (если чат уже есть) */
 function getChatIdByUsername(username: string): string | null {
   const u = username.toLowerCase();
   for (const [chatId, name] of Object.entries(chatNames)) {
@@ -283,7 +267,6 @@ function openComposeToUsername(username: string): void {
   messageInput.focus();
 }
 
-/** На мобильных: вернуться к списку чатов (скрыть панель чата) */
 function backToChatList(): void {
   selectedChatId = '';
   composeToUsername = null;
@@ -294,7 +277,6 @@ function backToChatList(): void {
   renderChatList();
 }
 
-/** Открыть чат с пользователем: если чат уже есть — открыть его с историей, иначе режим «написать» */
 function openChatWithUser(username: string): void {
   const existingChatId = getChatIdByUsername(username);
   if (existingChatId) {
@@ -385,10 +367,7 @@ function handleServerMessage(msg: ServerMessage): void {
         } else if (data?.username) {
           users = [{ id: String(data.id ?? ''), username: String(data.username) }];
         }
-      } catch {
-        // ignore
-      }
-      // Не показывать себя в списке — нельзя писать себе
+      } catch {}
       users = users.filter((u) => u.id !== currentUserId);
       if (users.length === 0) {
         findUserResult.innerHTML = '';
@@ -468,9 +447,7 @@ function handleServerMessage(msg: ServerMessage): void {
         }
         persistChatNames();
         renderChatList();
-      } catch {
-        // ignore
-      }
+      } catch {}
       break;
     }
     case 'messages_list': {
@@ -500,9 +477,7 @@ function handleServerMessage(msg: ServerMessage): void {
         persistMessages();
         renderChatList();
         if (selectedChatId === msg.chatId) renderMessages(selectedChatId);
-      } catch {
-        // ignore
-      }
+      } catch {}
       break;
     }
     case 'ack': {
@@ -673,7 +648,6 @@ function formatTime(ts: number): string {
   return d.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
 }
 
-/** Время для списка чатов (как в Telegram): сейчас, вчера, дата */
 function formatChatListTime(ts: number): string {
   const d = new Date(ts);
   const now = new Date();
