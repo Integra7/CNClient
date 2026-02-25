@@ -316,7 +316,7 @@ function renderComposePending(): void {
     `;
     messagesEl.appendChild(div);
   }
-  messagesEl.scrollTop = messagesEl.scrollHeight;
+  scrollMessagesToBottom();
 }
 
 function handleAuthMessage(msg: ServerMessage): void {
@@ -653,7 +653,13 @@ function renderMessages(chatId: string): void {
     `;
     messagesEl.appendChild(div);
   }
-  messagesEl.scrollTop = messagesEl.scrollHeight;
+  scrollMessagesToBottom();
+}
+
+function scrollMessagesToBottom(): void {
+  requestAnimationFrame(() => {
+    messagesEl.scrollTop = messagesEl.scrollHeight;
+  });
 }
 
 function escapeHtml(s: string): string {
