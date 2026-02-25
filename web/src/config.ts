@@ -12,10 +12,9 @@ const getBackendUrl = (): string => {
     return 'ws://localhost:8080/chat';
   }
   
-  // 3. В production используем тот же хост (если клиент и бэкенд на одном домене)
-  // Или можно задать конкретный адрес Serveo
-  const serveoUrl = 'fd33de80cca4a0ab-146-158-125-45.serveousercontent.com';
-  return `wss://${serveoUrl}/chat`;
+  // 3. В production — бэкенд на Serveo
+  const host = 'cosanostra.serveousercontent.com';
+  return `wss://${host}/chat`;
 };
 
 export const WS_URL = getBackendUrl();
