@@ -760,10 +760,16 @@ function renderMessages(chatId: string): void {
 
   const groups: DisplayMessage[][] = [];
   let run: DisplayMessage[] = [];
+  const groupKey = (x: DisplayMessage): string | null => {
+    if (!x.forwardFrom) return null;
+    return x.forwardBatchId != null
+      ? `${x.forwardBatchId}:${x.forwardFrom.senderId}`
+      : `fwd:${x.forwardFrom.senderId}`;
+  };
   for (const m of combined) {
-    const bid = m.forwardBatchId ?? (m.forwardFrom ? `fwd:${m.forwardFrom.senderId}` : null);
-    const prevBid = run.length > 0 ? (run[0]?.forwardBatchId ?? (run[0]?.forwardFrom ? `fwd:${run[0].forwardFrom.senderId}` : null)) : null;
-    if (bid && run.length > 0 && prevBid !== bid) {
+    const bid = groupKey(m);
+    const prevBid = run.length > 0 ? groupKey(run[0]!) : null;
+    if (bid && run.length > 0 && prevBid !== null && prevBid !== bid) {
       groups.push([...run]);
       run = [];
     }
