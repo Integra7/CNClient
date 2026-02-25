@@ -74,6 +74,8 @@ let lastFoundUsers: Array<{ id: string; username: string }> = [];
 /** Ожидаем user_found для этого username, затем откроем чат */
 let pendingOpenComposeUsername: string | null = null;
 let findUserDebounceTimer: ReturnType<typeof setTimeout> | null = null;
+/** Таймаут показа ошибки при входе/регистрации, если сокет не открылся */
+let authConnectionTimeout: ReturnType<typeof setTimeout> | null = null;
 
 function persistMessages(): void {
   if (currentUserId) saveMessagesForUser(currentUserId, messagesByChat);
@@ -602,17 +604,24 @@ function tryLoginWithCredentials(): void {
   }
   loginError.hidden = true;
   loginError.textContent = '';
+  if (authConnectionTimeout) clearTimeout(authConnectionTimeout);
+  authConnectionTimeout = null;
   if (authClient) authClient.disconnect();
-  authClient = new ChatWsClient(handleAuthMessage, () => {});
+  authClient = new ChatWsClient(handleAuthMessage, (state) => {
+    if (state === 'connected') {
+      if (authConnectionTimeout) clearTimeout(authConnectionTimeout);
+      authConnectionTimeout = null;
+      authClient?.login(username, password);
+    }
+  });
   authClient.connect('');
-  setTimeout(() => {
-    if (authClient?.connected) {
-      authClient.login(username, password);
-    } else {
+  authConnectionTimeout = setTimeout(() => {
+    if (!authClient?.connected) {
       loginError.textContent = 'Не удалось подключиться. Попробуйте «Войти по токену».';
       loginError.hidden = false;
     }
-  }, 800);
+    authConnectionTimeout = null;
+  }, 10000);
 }
 
 function tryLoginByToken(): void {
@@ -645,17 +654,24 @@ function tryRegister(): void {
   registerResult.dataset.status = '';
   registerUuidBox.hidden = true;
   clearRegisterFieldErrors();
+  if (authConnectionTimeout) clearTimeout(authConnectionTimeout);
+  authConnectionTimeout = null;
   if (authClient) authClient.disconnect();
-  authClient = new ChatWsClient(handleAuthMessage, () => {});
+  authClient = new ChatWsClient(handleAuthMessage, (state) => {
+    if (state === 'connected') {
+      if (authConnectionTimeout) clearTimeout(authConnectionTimeout);
+      authConnectionTimeout = null;
+      authClient?.createUser(username, email, password);
+    }
+  });
   authClient.connect('');
-  setTimeout(() => {
-    if (authClient?.connected) {
-      authClient.createUser(username, email, password);
-    } else {
+  authConnectionTimeout = setTimeout(() => {
+    if (!authClient?.connected) {
       registerResult.textContent = 'Не удалось подключиться к серверу.';
       registerResult.dataset.status = 'error';
     }
-  }, 800);
+    authConnectionTimeout = null;
+  }, 10000);
 }
 
 function clearRegisterFieldErrors(): void {

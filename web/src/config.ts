@@ -14,7 +14,7 @@ const getBackendUrl = (): string => {
   
   // 3. В production используем тот же хост (если клиент и бэкенд на одном домене)
   // Или можно задать конкретный адрес Serveo
-  const serveoUrl = '0c21e87a47645c8f-146-158-125-45.serveousercontent.com';
+  const serveoUrl = 'fd33de80cca4a0ab-146-158-125-45.serveousercontent.com';
   return `wss://${serveoUrl}/chat`;
 };
 
