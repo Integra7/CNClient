@@ -165,6 +165,21 @@ let contextMenuTarget: ContextMenuTarget = null;
 let editMessageTarget: { chatId: string; messageId: string } | null = null;
 let pendingDeleteMessageIds: string[] = [];
 
+/** Маппинг полей пересланного сообщения из API бэкенда в DisplayMessage.forwardFrom */
+function mapForwardFrom(m: {
+  isForwarded?: boolean;
+  forwardFromSenderId?: string | null;
+  forwardFromSenderName?: string | null;
+  forwardFromTimestamp?: number | null;
+}): DisplayMessage['forwardFrom'] | undefined {
+  if (!m.isForwarded) return undefined;
+  return {
+    senderId: m.forwardFromSenderId ?? '',
+    senderName: m.forwardFromSenderName ?? 'Unknown',
+    originalTimestamp: m.forwardFromTimestamp ?? undefined,
+  };
+}
+
 function persistMessages(): void {
   if (currentUserId) saveMessagesForUser(currentUserId, messagesByChat);
 }
@@ -521,8 +536,7 @@ function handleServerMessage(msg: ServerMessage): void {
             status: 'sent',
             isOwn: m.senderId === currentUserId,
             editedAt: m.editedAt,
-            forwardFrom: m.forwardFrom,
-            forwardBatchId: m.forwardBatchId,
+            forwardFrom: mapForwardFrom(m),
           });
         }
         list.sort((a, b) => a.timestamp - b.timestamp);
@@ -609,7 +623,13 @@ function handleServerMessage(msg: ServerMessage): void {
           (m) => m.id === msg.id || m.clientMessageId === msg.clientMessageId
         );
         if (!existing) {
-          const ext = msg as ServerMessage & { editedAt?: number; forwardFrom?: { senderId: string; senderName: string; originalTimestamp?: number }; forwardBatchId?: string };
+          const ext = msg as ServerMessage & {
+            editedAt?: number;
+            isForwarded?: boolean;
+            forwardFromSenderId?: string | null;
+            forwardFromSenderName?: string | null;
+            forwardFromTimestamp?: number | null;
+          };
           list.push({
             id: msg.id ?? crypto.randomUUID(),
             clientMessageId: msg.clientMessageId,
@@ -621,8 +641,7 @@ function handleServerMessage(msg: ServerMessage): void {
             status: 'sent',
             isOwn: msg.senderId === currentUserId,
             editedAt: ext.editedAt,
-            forwardFrom: ext.forwardFrom,
-            forwardBatchId: ext.forwardBatchId,
+            forwardFrom: mapForwardFrom(ext),
           });
           list.sort((a, b) => a.timestamp - b.timestamp);
           messagesByChat.set(msg.chatId, list);

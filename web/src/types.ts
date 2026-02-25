@@ -58,6 +58,7 @@ export interface ChatFromServer {
   lastMessageTime: number | null;
 }
 
+/** Формат сообщения в ответе бэкенда (messages_list и type: "message") */
 export interface MessageFromServer {
   id: string;
   chatId: string;
@@ -70,6 +71,10 @@ export interface MessageFromServer {
   status: string;
   isDeleted: boolean;
   editedAt?: number;
-  forwardFrom?: { senderId: string; senderName: string; originalTimestamp?: number };
-  forwardBatchId?: string;
+  /** Поля пересланных сообщений (API бэкенда) */
+  isForwarded?: boolean;
+  forwardFromSenderId?: string | null;
+  forwardFromSenderName?: string | null;
+  forwardFromChatId?: string | null;
+  forwardFromTimestamp?: number | null;
 }

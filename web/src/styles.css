@@ -936,15 +936,17 @@ h1 {
 }
 
 .forwarded-block {
-  background: rgba(167, 139, 250, 0.06);
+  background: rgba(167, 139, 250, 0.08);
   border-radius: 10px;
-  padding: 6px 10px;
-  margin: 4px 0;
-  border: 1px solid rgba(167, 139, 250, 0.15);
+  padding: 8px 12px;
+  margin: 6px 0;
+  outline: 1px solid rgba(167, 139, 250, 0.35);
+  outline-offset: -1px;
+  border: 1px solid rgba(167, 139, 250, 0.2);
 }
 
 .forwarded-block .message {
-  margin: 2px 0;
+  margin: 3px 0;
 }
 
 @media (max-width: 768px) {
