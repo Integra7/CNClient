@@ -36,19 +36,28 @@ function showMessageNotification(senderName: string, bodyPreview: string): void 
     return;
   }
 
-  if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
+  if (typeof Notification === 'undefined' || Notification.permission !== 'granted') return;
+
+  const showViaPage = (): void => {
     try {
-      const n = new Notification(senderName, {
-        body: bodyPreview,
-        icon: `${import.meta.env.BASE_URL}favicon.ico`,
-        tag: 'cn-msg',
-      });
-      n.onclick = () => {
-        window.focus();
-        n.close();
-      };
-      setTimeout(() => n.close(), 5000);
+      const n = new Notification(senderName, { body: bodyPreview });
+      n.onclick = () => { window.focus(); n.close(); };
+      setTimeout(() => n.close(), 8000);
     } catch {}
+  };
+
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.ready
+      .then((reg) => {
+        if (reg.active) {
+          reg.active.postMessage({ type: 'showNotification', title: senderName, body: bodyPreview });
+        } else {
+          showViaPage();
+        }
+      })
+      .catch(showViaPage);
+  } else {
+    showViaPage();
   }
 }
 
@@ -90,6 +99,8 @@ const registerUsernameError = document.getElementById('register-username-error')
 const registerEmailError = document.getElementById('register-email-error') as HTMLElement;
 const hideRegisterBtn = document.getElementById('hide-register-btn') as HTMLButtonElement;
 const notificationsBtn = document.getElementById('notifications-btn') as HTMLButtonElement;
+const notificationsBanner = document.getElementById('notifications-banner') as HTMLElement;
+const notificationsBannerBtn = document.getElementById('notifications-banner-btn') as HTMLButtonElement;
 const logoutBtn = document.getElementById('logout-btn') as HTMLButtonElement;
 
 const statusEl = document.getElementById('status') as HTMLElement;
@@ -677,9 +688,19 @@ function showApp(token: string): void {
   recomputeUnreadFromMessages();
   const savedChat = loadSelectedChatId(token);
   if (savedChat) selectedChatId = savedChat;
-  if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
-    notificationsBtn.textContent = 'Уведомления ✓';
-    notificationsBtn.title = 'Уведомления включены';
+  if (typeof Notification !== 'undefined') {
+    if (Notification.permission === 'granted') {
+      notificationsBtn.textContent = 'Уведомления ✓';
+      notificationsBtn.title = 'Уведомления включены';
+      notificationsBanner.hidden = true;
+    } else {
+      notificationsBanner.hidden = false;
+    }
+  } else {
+    notificationsBanner.hidden = true;
+  }
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register(`${import.meta.env.BASE_URL}sw.js`, { scope: import.meta.env.BASE_URL }).catch(() => {});
   }
   wsClient.connect(token);
 }
@@ -859,12 +880,18 @@ regEmail.addEventListener('input', () => {
 });
 registerBtn.addEventListener('click', tryRegister);
 disconnectBtn.addEventListener('click', disconnect);
-notificationsBtn.addEventListener('click', async () => {
+async function requestNotificationPermission(): Promise<void> {
   if (typeof Notification === 'undefined') return;
   const p = await Notification.requestPermission();
   notificationsBtn.title = p === 'granted' ? 'Уведомления включены' : p === 'denied' ? 'Уведомления заблокированы' : 'Включить уведомления в фоне';
-  if (p === 'granted') notificationsBtn.textContent = 'Уведомления ✓';
-});
+  if (p === 'granted') {
+    notificationsBtn.textContent = 'Уведомления ✓';
+    notificationsBanner.hidden = true;
+  }
+}
+
+notificationsBtn.addEventListener('click', requestNotificationPermission);
+notificationsBannerBtn.addEventListener('click', requestNotificationPermission);
 logoutBtn.addEventListener('click', logout);
 chatBackBtn.addEventListener('click', backToChatList);
 findUserResult.addEventListener('click', (e) => {

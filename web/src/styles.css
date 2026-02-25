@@ -1006,3 +1006,41 @@ h1 {
 #notifications-btn:hover {
   background: var(--border);
 }
+
+.notifications-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 16px;
+  background: rgba(167, 139, 250, 0.15);
+  border-bottom: 1px solid var(--border);
+}
+
+.notifications-banner[hidden] {
+  display: none !important;
+}
+
+.notifications-banner-text {
+  font-size: 12px;
+  color: var(--text);
+  flex: 1;
+  min-width: 0;
+}
+
+#notifications-banner-btn {
+  flex-shrink: 0;
+  padding: 8px 14px;
+  background: var(--accent);
+  color: var(--bg);
+  border: none;
+  border-radius: var(--radius);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+#notifications-banner-btn:hover {
+  background: var(--accent-hover);
+}
