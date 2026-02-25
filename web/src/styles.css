@@ -727,6 +727,170 @@ h1 {
   background: var(--accent-hover);
 }
 
+.selection-toolbar {
+  display: flex;
+  gap: 8px;
+  padding: 8px 12px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+}
+
+.selection-toolbar button {
+  padding: 6px 12px;
+  font-size: 12px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: var(--surface-hover);
+  color: var(--text);
+  font-family: var(--font-mono);
+  cursor: pointer;
+}
+
+.selection-toolbar button:hover {
+  background: var(--border);
+}
+
+.context-menu {
+  position: fixed;
+  z-index: 5000;
+  min-width: 140px;
+  padding: 4px 0;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+}
+
+.context-menu button {
+  display: block;
+  width: 100%;
+  padding: 8px 14px;
+  text-align: left;
+  border: none;
+  background: none;
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.context-menu button:hover {
+  background: var(--surface-hover);
+}
+
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.5);
+  z-index: 6000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.modal-overlay[hidden] {
+  display: none !important;
+}
+
+.modal {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px;
+  max-width: 360px;
+  width: 90%;
+}
+
+.modal[hidden] {
+  display: none !important;
+}
+
+.modal p {
+  margin: 0 0 14px;
+  font-size: 14px;
+}
+
+.modal-checkbox {
+  display: block;
+  margin-bottom: 14px;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.modal-checkbox input {
+  margin-right: 8px;
+}
+
+.modal-buttons {
+  display: flex;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.modal-buttons button {
+  padding: 8px 16px;
+  border-radius: var(--radius);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.modal-chat-list {
+  list-style: none;
+  margin: 0 0 14px;
+  padding: 0;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.modal-chat-list li {
+  padding: 10px 12px;
+  cursor: pointer;
+  border-radius: 6px;
+}
+
+.modal-chat-list li:hover {
+  background: var(--surface-hover);
+}
+
+#modal-edit-message-input {
+  width: 100%;
+  padding: 10px 14px;
+  margin-bottom: 14px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 13px;
+}
+
+.message.selected {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.message .meta-row {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  margin-top: 4px;
+  font-size: 11px;
+  opacity: 0.85;
+}
+
+.message .meta-edited {
+  color: var(--text-muted);
+  font-size: 10px;
+}
+
+.message .message-forward-from {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-bottom: 2px;
+}
+
 @media (max-width: 768px) {
   body {
     font-size: 15px;

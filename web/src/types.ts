@@ -37,6 +37,8 @@ export interface DisplayMessage {
   timestamp: number;
   status: MessageStatus;
   isOwn: boolean;
+  editedAt?: number;
+  forwardFrom?: { senderId: string; senderName: string };
 }
 
 export interface CreateUserPayload {
@@ -66,4 +68,6 @@ export interface MessageFromServer {
   updatedAt: number;
   status: string;
   isDeleted: boolean;
+  editedAt?: number;
+  forwardFrom?: { senderId: string; senderName: string };
 }

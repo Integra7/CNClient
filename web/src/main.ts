@@ -114,6 +114,30 @@ const chatPanel = document.getElementById('chat-panel') as HTMLElement;
 const chatHeader = document.getElementById('chat-header') as HTMLElement;
 const chatBackBtn = document.getElementById('chat-back-btn') as HTMLButtonElement;
 const messagesEl = document.getElementById('messages') as HTMLElement;
+const messagesSelectionToolbar = document.getElementById('messages-selection-toolbar') as HTMLElement;
+const selectionDeleteBtn = document.getElementById('selection-delete-btn') as HTMLButtonElement;
+const selectionForwardBtn = document.getElementById('selection-forward-btn') as HTMLButtonElement;
+const selectionCancelBtn = document.getElementById('selection-cancel-btn') as HTMLButtonElement;
+const contextMenu = document.getElementById('context-menu') as HTMLElement;
+const contextMenuDeleteChatBtn = document.getElementById('context-menu-delete-chat') as HTMLButtonElement;
+const modalOverlay = document.getElementById('modal-overlay') as HTMLElement;
+const modalDeleteMessages = document.getElementById('modal-delete-messages') as HTMLElement;
+const modalDeleteMessagesText = document.getElementById('modal-delete-messages-text') as HTMLElement;
+const modalDeleteMessagesForAllWrap = document.getElementById('modal-delete-messages-for-all-wrap') as HTMLElement;
+const modalDeleteMessagesForAll = document.getElementById('modal-delete-messages-for-all') as HTMLInputElement;
+const modalDeleteMessagesOk = document.getElementById('modal-delete-messages-ok') as HTMLButtonElement;
+const modalDeleteMessagesCancel = document.getElementById('modal-delete-messages-cancel') as HTMLButtonElement;
+const modalDeleteChat = document.getElementById('modal-delete-chat') as HTMLElement;
+const modalDeleteChatForBoth = document.getElementById('modal-delete-chat-for-both') as HTMLInputElement;
+const modalDeleteChatOk = document.getElementById('modal-delete-chat-ok') as HTMLButtonElement;
+const modalDeleteChatCancel = document.getElementById('modal-delete-chat-cancel') as HTMLButtonElement;
+const modalForward = document.getElementById('modal-forward') as HTMLElement;
+const modalForwardChatList = document.getElementById('modal-forward-chat-list') as HTMLUListElement;
+const modalForwardCancel = document.getElementById('modal-forward-cancel') as HTMLButtonElement;
+const modalEditMessage = document.getElementById('modal-edit-message') as HTMLElement;
+const modalEditMessageInput = document.getElementById('modal-edit-message-input') as HTMLInputElement;
+const modalEditMessageOk = document.getElementById('modal-edit-message-ok') as HTMLButtonElement;
+const modalEditMessageCancel = document.getElementById('modal-edit-message-cancel') as HTMLButtonElement;
 const messageInput = document.getElementById('message-input') as HTMLInputElement;
 const sendBtn = document.getElementById('send') as HTMLButtonElement;
 
@@ -132,6 +156,13 @@ let authConnectionTimeout: ReturnType<typeof setTimeout> | null = null;
 
 let lastReadByChat: Record<string, number> = {};
 let unreadByChat: Record<string, number> = {};
+const selectedMessageIds = new Set<string>();
+const deletedMessageIdsForMe = new Set<string>();
+const deletedChatIdsForMe = new Set<string>();
+type ContextMenuTarget = { type: 'message'; messageId: string; isOwn: boolean } | { type: 'chat'; chatId: string } | null;
+let contextMenuTarget: ContextMenuTarget = null;
+let editMessageTarget: { chatId: string; messageId: string } | null = null;
+let pendingDeleteMessageIds: string[] = [];
 
 function persistMessages(): void {
   if (currentUserId) saveMessagesForUser(currentUserId, messagesByChat);
@@ -202,6 +233,7 @@ function getChatIdsSorted(): string[] {
     }
   }
   for (const chatId of Object.keys(chatNames)) {
+    if (deletedChatIdsForMe.has(chatId)) continue;
     if (!ids.includes(chatId)) ids.push(chatId);
     if (!lastTime.has(chatId)) lastTime.set(chatId, 0);
   }
@@ -234,6 +266,10 @@ function renderChatList(): void {
       </span>
     `;
     li.addEventListener('click', () => selectChat(chatId));
+    li.addEventListener('contextmenu', (e) => {
+      e.preventDefault();
+      showChatContextMenu(e.clientX, e.clientY, chatId);
+    });
     chatListEl.appendChild(li);
   }
 }
@@ -481,6 +517,8 @@ function handleServerMessage(msg: ServerMessage): void {
             timestamp: m.createdAt ?? m.updatedAt ?? 0,
             status: 'sent',
             isOwn: m.senderId === currentUserId,
+            editedAt: m.editedAt,
+            forwardFrom: m.forwardFrom,
           });
         }
         list.sort((a, b) => a.timestamp - b.timestamp);
@@ -567,6 +605,7 @@ function handleServerMessage(msg: ServerMessage): void {
           (m) => m.id === msg.id || m.clientMessageId === msg.clientMessageId
         );
         if (!existing) {
+          const ext = msg as ServerMessage & { editedAt?: number; forwardFrom?: { senderId: string; senderName: string } };
           list.push({
             id: msg.id ?? crypto.randomUUID(),
             clientMessageId: msg.clientMessageId,
@@ -577,6 +616,8 @@ function handleServerMessage(msg: ServerMessage): void {
             timestamp: msg.timestamp ?? Date.now(),
             status: 'sent',
             isOwn: msg.senderId === currentUserId,
+            editedAt: ext.editedAt,
+            forwardFrom: ext.forwardFrom,
           });
           list.sort((a, b) => a.timestamp - b.timestamp);
           messagesByChat.set(msg.chatId, list);
@@ -606,6 +647,62 @@ function handleServerMessage(msg: ServerMessage): void {
         }
       }
       break;
+    case 'message_deleted': {
+      const payload = msg.content ? (typeof msg.content === 'string' ? JSON.parse(msg.content) : msg.content) as { messageId?: string; chatId?: string; forEveryone?: boolean } : {};
+      const mid = payload.messageId ?? msg.id;
+      const cid = payload.chatId ?? msg.chatId;
+      const forEveryone = payload.forEveryone === true;
+      if (mid && cid) {
+        if (forEveryone) {
+          const list = messagesByChat.get(cid) ?? [];
+          const idx = list.findIndex((x) => x.id === mid);
+          if (idx !== -1) list.splice(idx, 1);
+          messagesByChat.set(cid, list);
+        } else {
+          deletedMessageIdsForMe.add(mid);
+        }
+        persistMessages();
+        if (selectedChatId === cid) renderMessages(cid);
+        renderChatList();
+      }
+      break;
+    }
+    case 'message_edited': {
+      const payload = msg.content ? (typeof msg.content === 'string' ? JSON.parse(msg.content) : msg.content) as { messageId?: string; chatId?: string; newContent?: string; editedAt?: number } : {};
+      const mid = payload.messageId ?? msg.id;
+      const cid = payload.chatId ?? msg.chatId;
+      if (mid && cid && payload.newContent != null) {
+        const list = messagesByChat.get(cid) ?? [];
+        const item = list.find((x) => x.id === mid);
+        if (item) {
+          item.content = payload.newContent;
+          item.editedAt = payload.editedAt ?? Date.now();
+        }
+        persistMessages();
+        if (selectedChatId === cid) renderMessages(cid);
+      }
+      break;
+    }
+    case 'chat_deleted': {
+      const payload = msg.content ? (typeof msg.content === 'string' ? JSON.parse(msg.content) : msg.content) as { chatId?: string; forBoth?: boolean } : {};
+      const cid = payload.chatId ?? msg.chatId;
+      if (cid) {
+        if (payload.forBoth === true) {
+          messagesByChat.delete(cid);
+          delete chatNames[cid];
+          persistMessages();
+          persistChatNames();
+          if (selectedChatId === cid) {
+            selectedChatId = '';
+            backToChatList();
+          }
+        } else {
+          deletedChatIdsForMe.add(cid);
+        }
+        renderChatList();
+      }
+      break;
+    }
     default:
       break;
   }
@@ -616,7 +713,7 @@ function renderMessages(chatId: string): void {
   const list = messagesByChat.get(chatId) ?? [];
   const pendingList = [...pendingByClientId.values()].filter((p) => p.chatId === chatId);
   const combined: DisplayMessage[] = [
-    ...list,
+    ...list.filter((m) => !deletedMessageIdsForMe.has(m.id)),
     ...pendingList.map((p): DisplayMessage => ({
       id: p.clientMessageId,
       clientMessageId: p.clientMessageId,
@@ -631,15 +728,215 @@ function renderMessages(chatId: string): void {
 
   for (const m of combined) {
     const div = document.createElement('div');
-    div.className = `message ${m.isOwn ? 'own' : 'other'}`;
+    div.className = `message ${m.isOwn ? 'own' : 'other'}${selectedMessageIds.has(m.id) ? ' selected' : ''}`;
+    div.dataset.messageId = m.id;
+    div.dataset.isOwn = String(m.isOwn);
     const status = m.status === 'sending' ? '⏳' : m.status === 'failed' ? '❌' : '';
+    const editedLabel = m.editedAt ? '<span class="meta-edited">ред.</span>' : '';
+    const forwardLabel = m.forwardFrom ? `<span class="meta-forward">Переслано от ${escapeHtml(m.forwardFrom.senderName)}</span>` : '';
     div.innerHTML = `
+      ${forwardLabel ? `<div class="message-forward-from">${forwardLabel}</div>` : ''}
       <span class="content">${escapeHtml(m.content)}</span>
-      <span class="meta">${status} ${formatTime(m.timestamp)}</span>
+      <span class="meta-row">
+        <span class="meta">${status} ${formatTime(m.timestamp)}</span>
+        ${editedLabel}
+      </span>
     `;
+    div.addEventListener('click', (e) => {
+      e.stopPropagation();
+      toggleMessageSelection(m.id);
+    });
+    div.addEventListener('contextmenu', (e) => {
+      e.preventDefault();
+      showMessageContextMenu(e.clientX, e.clientY, m.id, m.isOwn);
+    });
     messagesEl.appendChild(div);
   }
+  messagesSelectionToolbar.hidden = selectedMessageIds.size === 0;
   scrollMessagesToBottom();
+}
+
+function toggleMessageSelection(messageId: string): void {
+  if (selectedMessageIds.has(messageId)) selectedMessageIds.delete(messageId);
+  else selectedMessageIds.add(messageId);
+  if (selectedChatId) renderMessages(selectedChatId);
+  messagesSelectionToolbar.hidden = selectedMessageIds.size === 0;
+}
+
+function showMessageContextMenu(x: number, y: number, messageId: string, isOwn: boolean): void {
+  contextMenuTarget = { type: 'message', messageId, isOwn };
+  (contextMenu.querySelector('[data-action="delete"]') as HTMLElement).hidden = false;
+  (contextMenu.querySelector('[data-action="edit"]') as HTMLElement).hidden = !isOwn;
+  (contextMenu.querySelector('[data-action="forward"]') as HTMLElement).hidden = false;
+  contextMenuDeleteChatBtn.hidden = true;
+  contextMenu.style.left = `${x}px`;
+  contextMenu.style.top = `${y}px`;
+  contextMenu.hidden = false;
+}
+
+function showChatContextMenu(x: number, y: number, chatId: string): void {
+  contextMenuTarget = { type: 'chat', chatId };
+  (contextMenu.querySelector('[data-action="delete"]') as HTMLElement).hidden = true;
+  (contextMenu.querySelector('[data-action="edit"]') as HTMLElement).hidden = true;
+  (contextMenu.querySelector('[data-action="forward"]') as HTMLElement).hidden = true;
+  contextMenuDeleteChatBtn.hidden = false;
+  contextMenu.style.left = `${x}px`;
+  contextMenu.style.top = `${y}px`;
+  contextMenu.hidden = false;
+}
+
+function hideContextMenu(): void {
+  contextMenu.hidden = true;
+  contextMenuTarget = null;
+}
+
+function getIdsToActOn(): string[] {
+  if (selectedMessageIds.size > 0) return [...selectedMessageIds];
+  if (contextMenuTarget?.type === 'message') return [contextMenuTarget.messageId];
+  return [];
+}
+
+function openDeleteMessagesModal(): void {
+  const ids = getIdsToActOn();
+  if (!ids.length || !selectedChatId || !wsClient) return;
+  pendingDeleteMessageIds = ids;
+  const list = messagesByChat.get(selectedChatId) ?? [];
+  const toDelete = list.filter((m) => ids.includes(m.id));
+  const hasOwn = toDelete.some((m) => m.isOwn);
+  modalDeleteMessagesText.textContent = toDelete.length === 1 ? 'Удалить сообщение?' : `Удалить сообщений: ${toDelete.length}?`;
+  modalDeleteMessagesForAllWrap.hidden = !hasOwn;
+  if (hasOwn) modalDeleteMessagesForAll.checked = false;
+  modalDeleteMessages.hidden = false;
+  modalDeleteChat.hidden = true;
+  modalForward.hidden = true;
+  modalEditMessage.hidden = true;
+  modalOverlay.hidden = false;
+}
+
+function openDeleteChatModal(chatId: string): void {
+  modalDeleteChatForBoth.checked = false;
+  modalDeleteMessages.hidden = true;
+  modalDeleteChat.hidden = false;
+  modalForward.hidden = true;
+  modalEditMessage.hidden = true;
+  modalOverlay.hidden = false;
+  modalDeleteChat.dataset.chatId = chatId;
+}
+
+function openForwardModal(): void {
+  const ids = getIdsToActOn();
+  if (!ids.length || !selectedChatId || !wsClient) return;
+  modalForwardChatList.innerHTML = '';
+  const chatIds = getChatIdsSorted().filter((id) => id !== selectedChatId && !deletedChatIdsForMe.has(id));
+  for (const cid of chatIds) {
+    const name = chatNames[cid] ?? shortId(cid);
+    const li = document.createElement('li');
+    li.textContent = name;
+    li.dataset.chatId = cid;
+    li.addEventListener('click', () => {
+      wsClient?.forwardMessages(ids, selectedChatId, cid);
+      selectedMessageIds.clear();
+      messagesSelectionToolbar.hidden = true;
+      closeModals();
+      if (selectedChatId) renderMessages(selectedChatId);
+    });
+    modalForwardChatList.appendChild(li);
+  }
+  modalDeleteMessages.hidden = true;
+  modalDeleteChat.hidden = true;
+  modalForward.hidden = false;
+  modalEditMessage.hidden = true;
+  modalOverlay.hidden = false;
+}
+
+function openEditMessageModal(chatId: string, messageId: string): void {
+  const list = messagesByChat.get(chatId) ?? [];
+  const msg = list.find((m) => m.id === messageId);
+  if (!msg) return;
+  editMessageTarget = { chatId, messageId };
+  modalEditMessageInput.value = msg.content;
+  modalDeleteMessages.hidden = true;
+  modalDeleteChat.hidden = true;
+  modalForward.hidden = true;
+  modalEditMessage.hidden = false;
+  modalOverlay.hidden = false;
+}
+
+function closeModals(): void {
+  modalOverlay.hidden = true;
+  modalDeleteMessages.hidden = true;
+  modalDeleteChat.hidden = true;
+  modalForward.hidden = true;
+  modalEditMessage.hidden = true;
+  editMessageTarget = null;
+  pendingDeleteMessageIds = [];
+}
+
+function confirmDeleteMessages(): void {
+  const ids = pendingDeleteMessageIds;
+  pendingDeleteMessageIds = [];
+  const forEveryone = modalDeleteMessagesForAll.checked;
+  if (!ids.length || !selectedChatId || !wsClient) { closeModals(); return; }
+  const list = messagesByChat.get(selectedChatId) ?? [];
+  for (const messageId of ids) {
+    const m = list.find((x) => x.id === messageId);
+    const forAll = m?.isOwn ? forEveryone : false;
+    wsClient.deleteMessage(selectedChatId, messageId, forAll);
+    if (forAll) {
+      const idx = list.findIndex((x) => x.id === messageId);
+      if (idx !== -1) list.splice(idx, 1);
+    } else {
+      deletedMessageIdsForMe.add(messageId);
+    }
+  }
+  messagesByChat.set(selectedChatId, list);
+  selectedMessageIds.clear();
+  persistMessages();
+  closeModals();
+  messagesSelectionToolbar.hidden = true;
+  renderMessages(selectedChatId);
+  renderChatList();
+}
+
+function confirmDeleteChat(): void {
+  const chatId = modalDeleteChat.dataset.chatId;
+  const forBoth = modalDeleteChatForBoth.checked;
+  if (!chatId || !wsClient) { closeModals(); return; }
+  wsClient.deleteChat(chatId, forBoth);
+  if (forBoth) {
+    messagesByChat.delete(chatId);
+    delete chatNames[chatId];
+    if (selectedChatId === chatId) {
+      selectedChatId = '';
+      backToChatList();
+    }
+    persistMessages();
+    persistChatNames();
+  } else {
+    deletedChatIdsForMe.add(chatId);
+    if (selectedChatId === chatId) {
+      selectedChatId = '';
+      backToChatList();
+    }
+  }
+  renderChatList();
+  closeModals();
+}
+
+function confirmEditMessage(): void {
+  if (!editMessageTarget || !wsClient) { closeModals(); return; }
+  const newContent = modalEditMessageInput.value.trim();
+  if (!newContent) { closeModals(); return; }
+  wsClient.editMessage(editMessageTarget.chatId, editMessageTarget.messageId, newContent);
+  const list = messagesByChat.get(editMessageTarget.chatId) ?? [];
+  const item = list.find((x) => x.id === editMessageTarget!.messageId);
+  if (item) {
+    item.content = newContent;
+    item.editedAt = Date.now();
+  }
+  persistMessages();
+  if (selectedChatId === editMessageTarget.chatId) renderMessages(selectedChatId);
+  closeModals();
 }
 
 function scrollMessagesToBottom(): void {
@@ -921,6 +1218,39 @@ messageInput.addEventListener('keydown', (e) => {
     sendMessage();
   }
 });
+
+contextMenu.addEventListener('click', (e) => {
+  const btn = (e.target as HTMLElement).closest('button[data-action]');
+  if (!btn) return;
+  const action = btn.getAttribute('data-action');
+  const target = contextMenuTarget;
+  hideContextMenu();
+  if (action === 'delete') openDeleteMessagesModal();
+  else if (action === 'edit' && target?.type === 'message') openEditMessageModal(selectedChatId, target.messageId);
+  else if (action === 'forward') openForwardModal();
+  else if (action === 'delete-chat' && target?.type === 'chat') openDeleteChatModal(target.chatId);
+});
+
+document.addEventListener('click', (e) => {
+  if (!contextMenu.hidden && !contextMenu.contains(e.target as Node)) hideContextMenu();
+});
+
+selectionDeleteBtn.addEventListener('click', () => openDeleteMessagesModal());
+selectionForwardBtn.addEventListener('click', () => openForwardModal());
+selectionCancelBtn.addEventListener('click', () => {
+  selectedMessageIds.clear();
+  messagesSelectionToolbar.hidden = true;
+  if (selectedChatId) renderMessages(selectedChatId);
+  hideContextMenu();
+});
+
+modalDeleteMessagesOk.addEventListener('click', confirmDeleteMessages);
+modalDeleteMessagesCancel.addEventListener('click', closeModals);
+modalDeleteChatOk.addEventListener('click', confirmDeleteChat);
+modalDeleteChatCancel.addEventListener('click', closeModals);
+modalForwardCancel.addEventListener('click', closeModals);
+modalEditMessageOk.addEventListener('click', confirmEditMessage);
+modalEditMessageCancel.addEventListener('click', closeModals);
 
 const savedToken = getSessionToken();
 if (savedToken) {

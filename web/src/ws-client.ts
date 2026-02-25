@@ -184,6 +184,37 @@ export class ChatWsClient {
     this.send({ type: 'get_messages', chatId, content });
   }
 
+  deleteMessage(chatId: string, messageId: string, forEveryone: boolean): void {
+    this.send({
+      type: 'delete_message',
+      chatId,
+      content: JSON.stringify({ messageId, forEveryone }),
+    });
+  }
+
+  editMessage(chatId: string, messageId: string, newContent: string): void {
+    this.send({
+      type: 'edit_message',
+      chatId,
+      content: JSON.stringify({ messageId, newContent }),
+    });
+  }
+
+  deleteChat(chatId: string, forBoth: boolean): void {
+    this.send({
+      type: 'delete_chat',
+      chatId,
+      content: JSON.stringify({ forBoth }),
+    });
+  }
+
+  forwardMessages(messageIds: string[], fromChatId: string, targetChatId: string): void {
+    this.send({
+      type: 'forward_messages',
+      content: JSON.stringify({ messageIds, fromChatId, targetChatId }),
+    });
+  }
+
   get connected(): boolean {
     return this.ws?.readyState === WebSocket.OPEN;
   }
