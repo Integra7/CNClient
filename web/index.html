@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>CosaNostra — Мессенджер</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Unbounded:wght@400;500;600&display=swap" rel="stylesheet" />
+  </head>
+  <body>
+    <!-- Экран входа: показывается, если пользователь не залогинен -->
+    <div id="login-screen" class="login-screen">
+      <div class="login-card">
+        <h1>CosaNostra</h1>
+        <p class="login-subtitle">Войдите в учётную запись или зарегистрируйтесь</p>
+
+        <div id="login-form-block" class="form-block">
+          <h2>Вход</h2>
+          <input id="login-username" type="text" placeholder="Имя пользователя" autocomplete="username" />
+          <input id="login-password" type="password" placeholder="Пароль" autocomplete="current-password" />
+          <div id="login-error" class="login-error" hidden></div>
+          <button id="login-btn" type="button">Войти</button>
+        </div>
+
+        <div class="login-divider">или</div>
+
+        <div class="form-block token-fallback">
+          <input id="login-token" type="text" placeholder="UUID (токен) для теста" />
+          <button id="login-by-token-btn" type="button">Войти по токену</button>
+        </div>
+
+        <div class="register-link-row">
+          <button type="button" id="show-register-btn" class="link-btn">Нет аккаунта? Зарегистрироваться</button>
+        </div>
+
+        <div id="register-block" class="form-block" hidden>
+          <h2>Регистрация</h2>
+          <p class="create-user-hint">Имя и учётные данные (username, email, password). После создания бэкенд пришлёт UUID.</p>
+          <input id="reg-username" type="text" placeholder="Имя пользователя (3–50 символов)" autocomplete="username" />
+          <div id="register-username-error" class="field-error-msg" hidden></div>
+          <input id="reg-email" type="email" placeholder="Email" autocomplete="email" />
+          <div id="register-email-error" class="field-error-msg" hidden></div>
+          <input id="reg-password" type="password" placeholder="Пароль (мин. 6 символов)" autocomplete="new-password" />
+          <button id="register-btn" type="button">Создать аккаунт</button>
+          <div id="register-result" class="form-result"></div>
+          <div id="register-uuid-box" class="uuid-box" hidden>
+            <span id="register-uuid-label"></span>
+            <button id="go-to-app-after-reg" type="button">Войти в мессенджер</button>
+          </div>
+          <button type="button" id="hide-register-btn" class="link-btn back-link">← Назад к входу</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Основное приложение: только для залогиненных (чаты скрыты, пока не залогинен) -->
+    <div id="app-main" class="app-main" hidden>
+      <header class="app-header">
+        <h1>CosaNostra</h1>
+        <div class="connection">
+          <span id="logged-in-label" class="logged-in-label"></span>
+          <span id="status">Отключено</span>
+          <button id="disconnect" type="button" disabled>Отключиться</button>
+          <button id="logout-btn" type="button">Выйти</button>
+        </div>
+      </header>
+      <div id="chat-section" hidden>
+        <aside class="sidebar">
+          <h2>Мои чаты</h2>
+          <div class="new-chat-row">
+            <input id="new-chat-username" type="text" placeholder="Имя пользователя (username)" autocomplete="off" />
+            <button id="new-chat-btn" type="button">Написать</button>
+          </div>
+          <div id="find-user-result" class="find-user-result" hidden></div>
+          <p class="sidebar-hint">Введите username и нажмите «Написать». Отправить можно только существующим пользователям.</p>
+          <ul id="chat-list"></ul>
+        </aside>
+        <main class="chat-main">
+          <div id="chat-placeholder">
+            Выберите чат слева или введите username и нажмите «Написать».
+          </div>
+          <div id="chat-panel" hidden>
+            <div id="chat-header"></div>
+            <div id="messages"></div>
+            <div class="send-row">
+              <input id="message-input" type="text" placeholder="Сообщение..." />
+              <button id="send" type="button">Отправить</button>
+            </div>
+          </div>
+        </main>
+      </div>
+    </div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
