@@ -38,7 +38,8 @@ export interface DisplayMessage {
   status: MessageStatus;
   isOwn: boolean;
   editedAt?: number;
-  forwardFrom?: { senderId: string; senderName: string };
+  forwardFrom?: { senderId: string; senderName: string; originalTimestamp?: number };
+  forwardBatchId?: string;
 }
 
 export interface CreateUserPayload {
@@ -69,5 +70,6 @@ export interface MessageFromServer {
   status: string;
   isDeleted: boolean;
   editedAt?: number;
-  forwardFrom?: { senderId: string; senderName: string };
+  forwardFrom?: { senderId: string; senderName: string; originalTimestamp?: number };
+  forwardBatchId?: string;
 }

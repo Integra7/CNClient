@@ -114,6 +114,7 @@ const chatPanel = document.getElementById('chat-panel') as HTMLElement;
 const chatHeader = document.getElementById('chat-header') as HTMLElement;
 const chatBackBtn = document.getElementById('chat-back-btn') as HTMLButtonElement;
 const messagesEl = document.getElementById('messages') as HTMLElement;
+const selectionToolbarZone = document.getElementById('selection-toolbar-zone') as HTMLElement;
 const messagesSelectionToolbar = document.getElementById('messages-selection-toolbar') as HTMLElement;
 const selectionDeleteBtn = document.getElementById('selection-delete-btn') as HTMLButtonElement;
 const selectionForwardBtn = document.getElementById('selection-forward-btn') as HTMLButtonElement;
@@ -275,6 +276,7 @@ function renderChatList(): void {
 }
 
 function selectChat(chatId: string): void {
+  selectedMessageIds.clear();
   selectedChatId = chatId;
   composeToUsername = null;
   if (currentUserId) saveSelectedChatId(currentUserId, chatId);
@@ -315,6 +317,7 @@ function openComposeToUsername(username: string): void {
 }
 
 function backToChatList(): void {
+  selectedMessageIds.clear();
   selectedChatId = '';
   composeToUsername = null;
   chatSection.classList.remove('chat-open');
@@ -519,6 +522,7 @@ function handleServerMessage(msg: ServerMessage): void {
             isOwn: m.senderId === currentUserId,
             editedAt: m.editedAt,
             forwardFrom: m.forwardFrom,
+            forwardBatchId: m.forwardBatchId,
           });
         }
         list.sort((a, b) => a.timestamp - b.timestamp);
@@ -605,7 +609,7 @@ function handleServerMessage(msg: ServerMessage): void {
           (m) => m.id === msg.id || m.clientMessageId === msg.clientMessageId
         );
         if (!existing) {
-          const ext = msg as ServerMessage & { editedAt?: number; forwardFrom?: { senderId: string; senderName: string } };
+          const ext = msg as ServerMessage & { editedAt?: number; forwardFrom?: { senderId: string; senderName: string; originalTimestamp?: number }; forwardBatchId?: string };
           list.push({
             id: msg.id ?? crypto.randomUUID(),
             clientMessageId: msg.clientMessageId,
@@ -618,6 +622,7 @@ function handleServerMessage(msg: ServerMessage): void {
             isOwn: msg.senderId === currentUserId,
             editedAt: ext.editedAt,
             forwardFrom: ext.forwardFrom,
+            forwardBatchId: ext.forwardBatchId,
           });
           list.sort((a, b) => a.timestamp - b.timestamp);
           messagesByChat.set(msg.chatId, list);
@@ -726,38 +731,64 @@ function renderMessages(chatId: string): void {
     })),
   ].sort((a, b) => a.timestamp - b.timestamp);
 
+  const groups: DisplayMessage[][] = [];
+  let run: DisplayMessage[] = [];
   for (const m of combined) {
-    const div = document.createElement('div');
-    div.className = `message ${m.isOwn ? 'own' : 'other'}${selectedMessageIds.has(m.id) ? ' selected' : ''}`;
-    div.dataset.messageId = m.id;
-    div.dataset.isOwn = String(m.isOwn);
-    const status = m.status === 'sending' ? '⏳' : m.status === 'failed' ? '❌' : '';
-    const editedLabel = m.editedAt ? '<span class="meta-edited">ред.</span>' : '';
-    const forwardLabel = m.forwardFrom ? `<span class="meta-forward">Переслано от ${escapeHtml(m.forwardFrom.senderName)}</span>` : '';
-    div.innerHTML = `
-      ${forwardLabel ? `<div class="message-forward-from">${forwardLabel}</div>` : ''}
-      <span class="content">${escapeHtml(m.content)}</span>
-      <span class="meta-row">
-        <span class="meta">${status} ${formatTime(m.timestamp)}</span>
-        ${editedLabel}
-      </span>
-    `;
-    div.addEventListener('click', (e) => {
-      e.stopPropagation();
-      toggleMessageSelection(m.id);
-    });
-    messagesEl.appendChild(div);
+    const bid = m.forwardBatchId ?? null;
+    if (bid && run.length > 0 && (run[0]?.forwardBatchId !== bid)) {
+      groups.push([...run]);
+      run = [];
+    }
+    run.push(m);
+    if (!bid) {
+      groups.push([...run]);
+      run = [];
+    }
   }
-  messagesSelectionToolbar.hidden = selectedMessageIds.size === 0;
+  if (run.length > 0) groups.push(run);
+
+  for (const group of groups) {
+    const useBlock = group.length > 1 && (group[0]?.forwardBatchId != null);
+    const container = useBlock ? document.createElement('div') : null;
+    if (container) {
+      container.className = 'forwarded-block';
+      messagesEl.appendChild(container);
+    }
+    for (const m of group) {
+      const div = document.createElement('div');
+      div.className = `message ${m.isOwn ? 'own' : 'other'}${selectedMessageIds.has(m.id) ? ' selected' : ''}`;
+      div.dataset.messageId = m.id;
+      div.dataset.isOwn = String(m.isOwn);
+      const status = m.status === 'sending' ? '⏳' : m.status === 'failed' ? '❌' : '';
+      const editedLabel = m.editedAt ? '<span class="meta-edited">ред.</span>' : '';
+      const origTime = m.forwardFrom?.originalTimestamp != null ? formatTime(m.forwardFrom.originalTimestamp) : '';
+      const forwardLine = m.forwardFrom
+        ? `<span class="meta-forward">Переслано от ${escapeHtml(m.forwardFrom.senderName)}${origTime ? ` · ${origTime}` : ''}</span>`
+        : '';
+      div.innerHTML = `
+        ${forwardLine ? `<div class="message-forward-from">${forwardLine}</div>` : ''}
+        <span class="content">${escapeHtml(m.content)}</span>
+        <span class="meta-row">
+          <span class="meta">${status} ${formatTime(m.timestamp)}</span>
+          ${editedLabel}
+        </span>
+      `;
+      div.addEventListener('click', (e) => {
+        e.stopPropagation();
+        toggleMessageSelection(m.id);
+      });
+      if (container) container.appendChild(div);
+      else messagesEl.appendChild(div);
+    }
+  }
+  updateSelectionToolbarVisibility();
   scrollMessagesToBottom();
 }
 
-function toggleMessageSelection(messageId: string): void {
-  if (selectedMessageIds.has(messageId)) selectedMessageIds.delete(messageId);
-  else selectedMessageIds.add(messageId);
-  if (selectedChatId) renderMessages(selectedChatId);
+function updateSelectionToolbarVisibility(): void {
   const hasSelection = selectedMessageIds.size > 0;
   messagesSelectionToolbar.hidden = !hasSelection;
+  selectionToolbarZone.hidden = !hasSelection;
   if (hasSelection && selectedChatId) {
     const list = messagesByChat.get(selectedChatId) ?? [];
     const singleId = selectedMessageIds.size === 1 ? [...selectedMessageIds][0] : null;
@@ -766,6 +797,13 @@ function toggleMessageSelection(messageId: string): void {
     selectionEditBtn.style.visibility = showEdit ? 'visible' : 'hidden';
     selectionEditBtn.disabled = !showEdit;
   }
+}
+
+function toggleMessageSelection(messageId: string): void {
+  if (selectedMessageIds.has(messageId)) selectedMessageIds.delete(messageId);
+  else selectedMessageIds.add(messageId);
+  if (selectedChatId) renderMessages(selectedChatId);
+  updateSelectionToolbarVisibility();
 }
 
 function showChatContextMenu(x: number, y: number, chatId: string): void {
@@ -824,7 +862,7 @@ function openForwardModal(): void {
     li.addEventListener('click', () => {
       wsClient?.forwardMessages(ids, selectedChatId, cid);
       selectedMessageIds.clear();
-      messagesSelectionToolbar.hidden = true;
+      updateSelectionToolbarVisibility();
       closeModals();
       if (selectedChatId) renderMessages(selectedChatId);
     });
@@ -881,7 +919,7 @@ function confirmDeleteMessages(): void {
   selectedMessageIds.clear();
   persistMessages();
   closeModals();
-  messagesSelectionToolbar.hidden = true;
+  updateSelectionToolbarVisibility();
   renderMessages(selectedChatId);
   renderChatList();
 }
@@ -1232,7 +1270,7 @@ selectionEditBtn.addEventListener('click', () => {
 });
 selectionCloseBtn.addEventListener('click', () => {
   selectedMessageIds.clear();
-  messagesSelectionToolbar.hidden = true;
+  updateSelectionToolbarVisibility();
   if (selectedChatId) renderMessages(selectedChatId);
   hideContextMenu();
 });

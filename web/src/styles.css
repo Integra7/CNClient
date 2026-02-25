@@ -929,6 +929,18 @@ h1 {
   margin-bottom: 2px;
 }
 
+.forwarded-block {
+  background: rgba(167, 139, 250, 0.06);
+  border-radius: 10px;
+  padding: 6px 10px;
+  margin: 4px 0;
+  border: 1px solid rgba(167, 139, 250, 0.15);
+}
+
+.forwarded-block .message {
+  margin: 2px 0;
+}
+
 @media (max-width: 768px) {
   body {
     font-size: 15px;
