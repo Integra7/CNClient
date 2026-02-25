@@ -5,9 +5,7 @@ import type {
   PendingMessage,
 } from './types';
 import type { ChatFromServer, MessageFromServer } from './types';
-import {
-  STORAGE_TOKEN_KEY,
-} from './config';
+import { setSessionToken, getSessionToken, clearSessionToken } from './session';
 import {
   loadMessagesForUser,
   saveMessagesForUser,
@@ -242,7 +240,7 @@ function handleAuthMessage(msg: ServerMessage): void {
     case 'login_success': {
       const token = msg.id;
       if (token) {
-        localStorage.setItem(STORAGE_TOKEN_KEY, token);
+        setSessionToken(token);
         authClient?.disconnect();
         authClient = null;
         showApp(token);
@@ -252,6 +250,7 @@ function handleAuthMessage(msg: ServerMessage): void {
     case 'user_created': {
       const token = msg.id ?? null;
       if (token) {
+        setSessionToken(token);
         authClient?.disconnect();
         authClient = null;
         registerBlock.hidden = true;
@@ -602,7 +601,7 @@ function logout(): void {
   currentUserId = '';
   selectedChatId = '';
   composeToUsername = null;
-  localStorage.removeItem(STORAGE_TOKEN_KEY);
+  clearSessionToken();
   appMain.setAttribute('hidden', '');
   loginScreen.removeAttribute('hidden');
   loginError.hidden = true;
@@ -799,7 +798,7 @@ messageInput.addEventListener('keydown', (e) => {
   }
 });
 
-const savedToken = localStorage.getItem(STORAGE_TOKEN_KEY);
+const savedToken = getSessionToken();
 if (savedToken) {
   showApp(savedToken);
 } else {
