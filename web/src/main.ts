@@ -118,7 +118,7 @@ const messagesSelectionToolbar = document.getElementById('messages-selection-too
 const selectionDeleteBtn = document.getElementById('selection-delete-btn') as HTMLButtonElement;
 const selectionForwardBtn = document.getElementById('selection-forward-btn') as HTMLButtonElement;
 const selectionEditBtn = document.getElementById('selection-edit-btn') as HTMLButtonElement;
-const selectionCancelBtn = document.getElementById('selection-cancel-btn') as HTMLButtonElement;
+const selectionCloseBtn = document.getElementById('selection-close-btn') as HTMLButtonElement;
 const contextMenu = document.getElementById('context-menu') as HTMLElement;
 const modalOverlay = document.getElementById('modal-overlay') as HTMLElement;
 const modalDeleteMessages = document.getElementById('modal-delete-messages') as HTMLElement;
@@ -1230,7 +1230,7 @@ selectionEditBtn.addEventListener('click', () => {
   const msg = list.find((m) => m.id === messageId);
   if (msg?.isOwn) openEditMessageModal(chatId, messageId);
 });
-selectionCancelBtn.addEventListener('click', () => {
+selectionCloseBtn.addEventListener('click', () => {
   selectedMessageIds.clear();
   messagesSelectionToolbar.hidden = true;
   if (selectedChatId) renderMessages(selectedChatId);
