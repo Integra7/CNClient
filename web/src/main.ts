@@ -18,6 +18,19 @@ import {
 } from './persistence';
 import './styles.css';
 
+/** Звук при входящем сообщении (файл в public/sounds) */
+const NOTIFICATION_SOUND_URL = `${import.meta.env.BASE_URL}sounds/IceShatter42.wav`;
+
+function playNotificationSound(): void {
+  try {
+    const audio = new Audio(NOTIFICATION_SOUND_URL);
+    audio.volume = 0.6;
+    audio.play().catch(() => {});
+  } catch {
+    // игнор при ошибке (автоплей может быть заблокирован)
+  }
+}
+
 // Экран входа
 const loginScreen = document.getElementById('login-screen') as HTMLElement;
 const appMain = document.getElementById('app-main') as HTMLElement;
@@ -37,24 +50,20 @@ const registerBtn = document.getElementById('register-btn') as HTMLButtonElement
 const registerResult = document.getElementById('register-result') as HTMLElement;
 const registerUsernameError = document.getElementById('register-username-error') as HTMLElement;
 const registerEmailError = document.getElementById('register-email-error') as HTMLElement;
-const registerUuidBox = document.getElementById('register-uuid-box') as HTMLElement;
-const registerUuidLabel = document.getElementById('register-uuid-label') as HTMLElement;
-const goToAppAfterRegBtn = document.getElementById('go-to-app-after-reg') as HTMLButtonElement;
 const hideRegisterBtn = document.getElementById('hide-register-btn') as HTMLButtonElement;
 const logoutBtn = document.getElementById('logout-btn') as HTMLButtonElement;
-const loggedInLabel = document.getElementById('logged-in-label') as HTMLElement;
 
 // Основное приложение
 const statusEl = document.getElementById('status') as HTMLElement;
 const disconnectBtn = document.getElementById('disconnect') as HTMLButtonElement;
 const chatSection = document.getElementById('chat-section') as HTMLElement;
 const newChatUsernameInput = document.getElementById('new-chat-username') as HTMLInputElement;
-const newChatBtn = document.getElementById('new-chat-btn') as HTMLButtonElement;
 const findUserResult = document.getElementById('find-user-result') as HTMLElement;
 const chatListEl = document.getElementById('chat-list') as HTMLUListElement;
 const chatPlaceholder = document.getElementById('chat-placeholder') as HTMLElement;
 const chatPanel = document.getElementById('chat-panel') as HTMLElement;
 const chatHeader = document.getElementById('chat-header') as HTMLElement;
+const chatBackBtn = document.getElementById('chat-back-btn') as HTMLButtonElement;
 const messagesEl = document.getElementById('messages') as HTMLElement;
 const messageInput = document.getElementById('message-input') as HTMLInputElement;
 const sendBtn = document.getElementById('send') as HTMLButtonElement;
@@ -67,10 +76,7 @@ const chatNames: Record<string, string> = {};
 let currentUserId: string = '';
 let selectedChatId: string = '';
 let composeToUsername: string | null = null;
-let lastCreatedUserId: string | null = null;
 let pendingUsernameForChat: string | null = null;
-/** Список похожих пользователей от бэкенда (топ-5) */
-let lastFoundUsers: Array<{ id: string; username: string }> = [];
 /** Ожидаем user_found для этого username, затем откроем чат */
 let pendingOpenComposeUsername: string | null = null;
 let findUserDebounceTimer: ReturnType<typeof setTimeout> | null = null;
@@ -94,18 +100,21 @@ function setConnectionState(state: 'disconnected' | 'connecting' | 'connected'):
     wsClient?.getChats();
     renderChatList();
     if (selectedChatId) {
+      chatSection.classList.add('chat-open');
       chatPlaceholder.setAttribute('hidden', '');
       chatPanel.removeAttribute('hidden');
       chatHeader.textContent = chatNames[selectedChatId] ?? shortId(selectedChatId);
       renderMessages(selectedChatId);
       wsClient?.getMessages(selectedChatId);
     } else if (composeToUsername) {
+      chatSection.classList.add('chat-open');
       chatPlaceholder.setAttribute('hidden', '');
       chatPanel.removeAttribute('hidden');
       chatHeader.textContent = `@${composeToUsername}`;
       renderComposePending();
       messageInput.focus();
     } else {
+      chatSection.classList.remove('chat-open');
       chatPlaceholder.removeAttribute('hidden');
       chatPanel.setAttribute('hidden', '');
     }
@@ -158,6 +167,7 @@ function selectChat(chatId: string): void {
   selectedChatId = chatId;
   composeToUsername = null;
   if (currentUserId) saveSelectedChatId(currentUserId, chatId);
+  chatSection.classList.add('chat-open');
   chatPlaceholder.setAttribute('hidden', '');
   chatPanel.removeAttribute('hidden');
   chatHeader.textContent = chatNames[chatId] ?? shortId(chatId);
@@ -179,12 +189,24 @@ function getChatIdByUsername(username: string): string | null {
 function openComposeToUsername(username: string): void {
   composeToUsername = username;
   selectedChatId = '';
+  chatSection.classList.add('chat-open');
   chatPlaceholder.setAttribute('hidden', '');
   chatPanel.removeAttribute('hidden');
   chatHeader.textContent = `@${username}`;
   renderComposePending();
   renderChatList();
   messageInput.focus();
+}
+
+/** На мобильных: вернуться к списку чатов (скрыть панель чата) */
+function backToChatList(): void {
+  selectedChatId = '';
+  composeToUsername = null;
+  chatSection.classList.remove('chat-open');
+  chatPlaceholder.removeAttribute('hidden');
+  chatPanel.setAttribute('hidden', '');
+  chatHeader.textContent = '';
+  renderChatList();
 }
 
 /** Открыть чат с пользователем: если чат уже есть — открыть его с историей, иначе режим «написать» */
@@ -195,22 +217,6 @@ function openChatWithUser(username: string): void {
   } else {
     openComposeToUsername(username);
   }
-}
-
-function openNewChatByUsername(): void {
-  const username = newChatUsernameInput.value.trim();
-  if (!username || !wsClient?.connected) return;
-  const match = lastFoundUsers.find((u) => u.username.toLowerCase() === username.toLowerCase());
-  if (match) {
-    openChatWithUser(match.username);
-    return;
-  }
-  findUserResult.hidden = false;
-  findUserResult.textContent = 'Поиск…';
-  findUserResult.className = 'find-user-result searching';
-  findUserResult.title = '';
-  pendingOpenComposeUsername = username;
-  wsClient.findUser(username);
 }
 
 function renderComposePending(): void {
@@ -243,14 +249,12 @@ function handleAuthMessage(msg: ServerMessage): void {
     case 'user_created': {
       const token = msg.id ?? null;
       if (token) {
-        lastCreatedUserId = token;
-        registerUuidLabel.textContent = `UUID: ${token}`;
-        registerUuidBox.hidden = false;
-        registerResult.textContent = 'Аккаунт создан. Нажмите «Войти в мессенджер».';
-        registerResult.dataset.status = 'success';
+        authClient?.disconnect();
+        authClient = null;
+        registerBlock.hidden = true;
+        registerResult.textContent = '';
+        showApp(token);
       }
-      authClient?.disconnect();
-      authClient = null;
       break;
     }
     case 'error': {
@@ -300,7 +304,6 @@ function handleServerMessage(msg: ServerMessage): void {
       }
       // Не показывать себя в списке — нельзя писать себе
       users = users.filter((u) => u.id !== currentUserId);
-      lastFoundUsers = users;
       if (users.length === 0) {
         findUserResult.innerHTML = '';
         findUserResult.textContent = 'Пользователь не найден';
@@ -508,6 +511,7 @@ function handleServerMessage(msg: ServerMessage): void {
           persistMessages();
           renderChatList();
           if (selectedChatId === msg.chatId) renderMessages(selectedChatId);
+          if (msg.senderId !== currentUserId) playNotificationSound();
         }
       }
       break;
@@ -562,7 +566,6 @@ function showApp(token: string): void {
   loginScreen.setAttribute('hidden', '');
   appMain.removeAttribute('hidden');
   currentUserId = token;
-  loggedInLabel.textContent = `ID: ${shortId(token)}`;
   if (wsClient) wsClient.disconnect();
   wsClient = new ChatWsClient(handleServerMessage, setConnectionState);
   const saved = loadMessagesForUser(token);
@@ -585,7 +588,6 @@ function logout(): void {
   loginError.hidden = true;
   registerBlock.hidden = true;
   loginFormBlock.hidden = false;
-  registerUuidBox.hidden = true;
   registerResult.textContent = '';
 }
 
@@ -652,7 +654,6 @@ function tryRegister(): void {
   }
   registerResult.textContent = 'Отправка…';
   registerResult.dataset.status = '';
-  registerUuidBox.hidden = true;
   clearRegisterFieldErrors();
   if (authConnectionTimeout) clearTimeout(authConnectionTimeout);
   authConnectionTimeout = null;
@@ -681,13 +682,6 @@ function clearRegisterFieldErrors(): void {
   registerEmailError.hidden = true;
   regUsername.classList.remove('field-error');
   regEmail.classList.remove('field-error');
-}
-
-function goToAppAfterReg(): void {
-  if (!lastCreatedUserId) return;
-  registerUuidBox.hidden = true;
-  showApp(lastCreatedUserId);
-  lastCreatedUserId = null;
 }
 
 function sendMessage(): void {
@@ -751,7 +745,6 @@ hideRegisterBtn.addEventListener('click', () => {
   registerBlock.hidden = true;
   loginFormBlock.hidden = false;
   registerResult.textContent = '';
-  registerUuidBox.hidden = true;
   clearRegisterFieldErrors();
 });
 regUsername.addEventListener('input', () => {
@@ -763,11 +756,9 @@ regEmail.addEventListener('input', () => {
   regEmail.classList.remove('field-error');
 });
 registerBtn.addEventListener('click', tryRegister);
-goToAppAfterRegBtn.addEventListener('click', goToAppAfterReg);
-
 disconnectBtn.addEventListener('click', disconnect);
 logoutBtn.addEventListener('click', logout);
-newChatBtn.addEventListener('click', openNewChatByUsername);
+chatBackBtn.addEventListener('click', backToChatList);
 findUserResult.addEventListener('click', (e) => {
   const item = (e.target as HTMLElement).closest('.find-user-item');
   if (item && item instanceof HTMLElement && item.dataset.username) {
@@ -778,7 +769,6 @@ newChatUsernameInput.addEventListener('input', () => {
   const username = newChatUsernameInput.value.trim();
   if (findUserDebounceTimer) clearTimeout(findUserDebounceTimer);
   findUserResult.hidden = true;
-  lastFoundUsers = [];
   if (!username) return;
   findUserDebounceTimer = setTimeout(() => {
     findUserDebounceTimer = null;
@@ -788,12 +778,6 @@ newChatUsernameInput.addEventListener('input', () => {
     findUserResult.className = 'find-user-result searching';
     wsClient.findUser(username);
   }, 1000);
-});
-newChatUsernameInput.addEventListener('keydown', (e) => {
-  if (e.key === 'Enter') {
-    e.preventDefault();
-    openNewChatByUsername();
-  }
 });
 sendBtn.addEventListener('click', sendMessage);
 messageInput.addEventListener('keydown', (e) => {

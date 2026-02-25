@@ -451,21 +451,6 @@ h1 {
   border-color: var(--accent);
 }
 
-#new-chat-btn {
-  padding: 8px 14px;
-  background: var(--surface-hover);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  color: var(--text);
-  font-family: var(--font-mono);
-  font-size: 12px;
-  cursor: pointer;
-}
-
-#new-chat-btn:hover {
-  background: var(--border);
-}
-
 .find-user-result {
   font-size: 12px;
   margin-bottom: 8px;
@@ -594,13 +579,25 @@ h1 {
   min-height: 0;
 }
 
+.chat-panel-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border);
+}
+
+.chat-back-btn {
+  display: none; /* Показывается только на мобильных */
+}
+
 #chat-header {
   font-family: var(--font-sans);
   font-size: 0.95rem;
   font-weight: 500;
-  margin-bottom: 12px;
-  padding-bottom: 8px;
-  border-bottom: 1px solid var(--border);
+  flex: 1;
+  min-width: 0;
 }
 
 #messages {
@@ -696,4 +693,221 @@ h1 {
 
 #send:hover {
   background: var(--accent-hover);
+}
+
+/* ——— Мобильные: один столбец, переключение список ↔ чат ——— */
+@media (max-width: 768px) {
+  body {
+    font-size: 15px;
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  .login-screen {
+    padding: 16px;
+    padding-top: max(24px, env(safe-area-inset-top));
+  }
+
+  .login-card {
+    padding: 24px 20px;
+  }
+
+  /* Блок регистрации: удобные отступы и поля на мобильных */
+  #register-block.form-block {
+    margin-top: 8px;
+  }
+
+  #register-block .create-user-hint {
+    margin-bottom: 14px;
+  }
+
+  #register-block input,
+  #reg-username,
+  #reg-email,
+  #reg-password {
+    min-height: 44px;
+    padding: 12px 14px;
+    margin-bottom: 12px;
+  }
+
+  #register-btn,
+  #go-to-app-after-reg {
+    min-height: 44px;
+    padding: 12px 14px;
+    width: 100%;
+  }
+
+  .uuid-box {
+    margin-top: 14px;
+    padding: 14px;
+  }
+
+  /* Кнопки-ссылки (Назад, Регистрироваться) — удобная зона нажатия */
+  .link-btn,
+  .back-link {
+    min-height: 44px;
+    padding: 12px 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .back-link {
+    margin-top: 20px;
+  }
+
+  .app-main {
+    max-width: none;
+  }
+
+  .app-header {
+    padding: 12px 16px;
+    padding-top: max(12px, env(safe-area-inset-top));
+  }
+
+  .app-header h1 {
+    font-size: 1.1rem;
+    margin-bottom: 8px;
+  }
+
+  .connection {
+    gap: 8px;
+  }
+
+  .connection input {
+    min-width: 0;
+  }
+
+  .connection button {
+    min-height: 44px;
+    padding: 10px 14px;
+  }
+
+  #chat-section {
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
+    position: relative;
+  }
+
+  /* В режиме списка на мобильных показываем только сайдбар (список чатов) */
+  #chat-section:not(.chat-open) .chat-main {
+    display: none;
+  }
+
+  .sidebar {
+    width: 100%;
+    flex: 1;
+    min-height: 0;
+    border-right: none;
+    border-bottom: none;
+    padding: 12px 16px;
+    padding-left: max(16px, env(safe-area-inset-left));
+    padding-right: max(16px, env(safe-area-inset-right));
+  }
+
+  .chat-main {
+    flex: 1;
+    min-height: 0;
+    padding: 12px 16px;
+    padding-left: max(16px, env(safe-area-inset-left));
+    padding-right: max(16px, env(safe-area-inset-right));
+    padding-bottom: max(16px, env(safe-area-inset-bottom));
+  }
+
+  /* На мобильных при открытом чате скрываем список, показываем только чат */
+  #chat-section.chat-open .sidebar {
+    display: none;
+  }
+
+  #chat-section.chat-open .chat-main {
+    display: flex;
+    flex: 1;
+    min-height: 0;
+    max-height: none;
+  }
+
+  .chat-back-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 44px;
+    min-width: 44px;
+    padding: 10px 14px;
+    flex-shrink: 0;
+    background: var(--surface-hover);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    color: var(--text);
+    font-family: var(--font-mono);
+    font-size: 13px;
+    cursor: pointer;
+  }
+
+  .chat-back-btn:hover {
+    background: var(--border);
+  }
+
+  .chat-panel-header {
+    margin-bottom: 10px;
+    padding-bottom: 10px;
+  }
+
+  #chat-header {
+    font-size: 0.9rem;
+  }
+
+  #messages {
+    min-height: 120px;
+    padding: 10px;
+  }
+
+  .message {
+    max-width: 90%;
+  }
+
+  .send-row {
+    gap: 10px;
+  }
+
+  #message-input,
+  #send {
+    min-height: 44px;
+  }
+
+  #send {
+    padding: 10px 18px;
+  }
+
+  .new-chat-row {
+    gap: 10px;
+  }
+
+  #new-chat-username {
+    min-height: 44px;
+    padding: 10px 14px;
+  }
+
+  #chat-list li {
+    min-height: 44px;
+    padding: 12px 14px;
+  }
+
+  .find-user-item {
+    min-height: 44px;
+    padding: 12px 14px;
+    display: flex;
+    align-items: center;
+  }
+
+  #login-btn,
+  .login-card button[type="button"]:not(.link-btn) {
+    min-height: 44px;
+  }
+
+  .login-card input {
+    min-height: 44px;
+    padding: 12px 14px;
+  }
 }

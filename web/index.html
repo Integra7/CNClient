@@ -2,7 +2,8 @@
 <html lang="ru">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#16161a" />
     <title>CosaNostra — Мессенджер</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -36,7 +37,7 @@
 
         <div id="register-block" class="form-block" hidden>
           <h2>Регистрация</h2>
-          <p class="create-user-hint">Имя и учётные данные (username, email, password). После создания бэкенд пришлёт UUID.</p>
+          <p class="create-user-hint">Имя и учётные данные (username, email, password). После создания вы сразу попадёте в мессенджер.</p>
           <input id="reg-username" type="text" placeholder="Имя пользователя (3–50 символов)" autocomplete="username" />
           <div id="register-username-error" class="field-error-msg" hidden></div>
           <input id="reg-email" type="email" placeholder="Email" autocomplete="email" />
@@ -44,10 +45,6 @@
           <input id="reg-password" type="password" placeholder="Пароль (мин. 6 символов)" autocomplete="new-password" />
           <button id="register-btn" type="button">Создать аккаунт</button>
           <div id="register-result" class="form-result"></div>
-          <div id="register-uuid-box" class="uuid-box" hidden>
-            <span id="register-uuid-label"></span>
-            <button id="go-to-app-after-reg" type="button">Войти в мессенджер</button>
-          </div>
           <button type="button" id="hide-register-btn" class="link-btn back-link">← Назад к входу</button>
         </div>
       </div>
@@ -58,7 +55,6 @@
       <header class="app-header">
         <h1>CosaNostra</h1>
         <div class="connection">
-          <span id="logged-in-label" class="logged-in-label"></span>
           <span id="status">Отключено</span>
           <button id="disconnect" type="button" disabled>Отключиться</button>
           <button id="logout-btn" type="button">Выйти</button>
@@ -69,18 +65,20 @@
           <h2>Мои чаты</h2>
           <div class="new-chat-row">
             <input id="new-chat-username" type="text" placeholder="Имя пользователя (username)" autocomplete="off" />
-            <button id="new-chat-btn" type="button">Написать</button>
           </div>
           <div id="find-user-result" class="find-user-result" hidden></div>
-          <p class="sidebar-hint">Введите username и нажмите «Написать». Отправить можно только существующим пользователям.</p>
+          <p class="sidebar-hint">Введите username и выберите пользователя из списка.</p>
           <ul id="chat-list"></ul>
         </aside>
         <main class="chat-main">
           <div id="chat-placeholder">
-            Выберите чат слева или введите username и нажмите «Написать».
+            Выберите чат слева или введите username и выберите из списка.
           </div>
           <div id="chat-panel" hidden>
-            <div id="chat-header"></div>
+            <div class="chat-panel-header">
+              <button id="chat-back-btn" type="button" class="chat-back-btn" aria-label="К списку чатов">← Чаты</button>
+              <div id="chat-header"></div>
+            </div>
             <div id="messages"></div>
             <div class="send-row">
               <input id="message-input" type="text" placeholder="Сообщение..." />
