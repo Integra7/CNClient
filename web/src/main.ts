@@ -31,6 +31,54 @@ function playNotificationSound(): void {
   }
 }
 
+/** Показать уведомление о новом сообщении: вкладка в фоне — системное; вкладка активна — тост в стиле Telegram */
+function showMessageNotification(senderName: string, bodyPreview: string): void {
+  const isTabVisible = document.visibilityState === 'visible';
+
+  if (isTabVisible) {
+    showInPageToast(senderName, bodyPreview);
+    return;
+  }
+
+  if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
+    try {
+      const n = new Notification(senderName, {
+        body: bodyPreview,
+        icon: `${import.meta.env.BASE_URL}favicon.ico`,
+        tag: 'cn-msg',
+      });
+      n.onclick = () => {
+        window.focus();
+        n.close();
+      };
+      setTimeout(() => n.close(), 5000);
+    } catch {
+      // игнор
+    }
+  }
+}
+
+/** Тост в интерфейсе (ПК — как в Telegram) */
+function showInPageToast(title: string, body: string): void {
+  const toast = document.createElement('div');
+  toast.className = 'cn-toast';
+  const preview = body.length > 80 ? body.slice(0, 80) + '…' : body;
+  toast.innerHTML = `
+    <span class="cn-toast-title">${escapeHtml(title)}</span>
+    <span class="cn-toast-body">${escapeHtml(preview)}</span>
+  `;
+  toast.addEventListener('click', () => {
+    toast.remove();
+    window.focus();
+  });
+  document.body.appendChild(toast);
+  requestAnimationFrame(() => toast.classList.add('cn-toast-visible'));
+  setTimeout(() => {
+    toast.classList.remove('cn-toast-visible');
+    setTimeout(() => toast.remove(), 300);
+  }, 4000);
+}
+
 // Экран входа
 const loginScreen = document.getElementById('login-screen') as HTMLElement;
 const appMain = document.getElementById('app-main') as HTMLElement;
@@ -49,6 +97,7 @@ const registerResult = document.getElementById('register-result') as HTMLElement
 const registerUsernameError = document.getElementById('register-username-error') as HTMLElement;
 const registerEmailError = document.getElementById('register-email-error') as HTMLElement;
 const hideRegisterBtn = document.getElementById('hide-register-btn') as HTMLButtonElement;
+const notificationsBtn = document.getElementById('notifications-btn') as HTMLButtonElement;
 const logoutBtn = document.getElementById('logout-btn') as HTMLButtonElement;
 
 // Основное приложение
@@ -550,6 +599,13 @@ function handleServerMessage(msg: ServerMessage): void {
             playNotificationSound();
             if (selectedChatId !== msg.chatId) {
               unreadByChat[msg.chatId] = (unreadByChat[msg.chatId] ?? 0) + 1;
+              const name = chatNames[msg.chatId] ?? 'Новое сообщение';
+              const preview = typeof msg.content === 'string' ? msg.content : '';
+              showMessageNotification(name, preview);
+            } else if (document.visibilityState !== 'visible') {
+              const name = chatNames[msg.chatId] ?? 'Новое сообщение';
+              const preview = typeof msg.content === 'string' ? msg.content : '';
+              showMessageNotification(name, preview);
             }
           }
           if (selectedChatId === msg.chatId) {
@@ -641,6 +697,10 @@ function showApp(token: string): void {
   recomputeUnreadFromMessages();
   const savedChat = loadSelectedChatId(token);
   if (savedChat) selectedChatId = savedChat;
+  if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
+    notificationsBtn.textContent = 'Уведомления ✓';
+    notificationsBtn.title = 'Уведомления включены';
+  }
   wsClient.connect(token);
 }
 
@@ -819,6 +879,12 @@ regEmail.addEventListener('input', () => {
 });
 registerBtn.addEventListener('click', tryRegister);
 disconnectBtn.addEventListener('click', disconnect);
+notificationsBtn.addEventListener('click', async () => {
+  if (typeof Notification === 'undefined') return;
+  const p = await Notification.requestPermission();
+  notificationsBtn.title = p === 'granted' ? 'Уведомления включены' : p === 'denied' ? 'Уведомления заблокированы' : 'Включить уведомления в фоне';
+  if (p === 'granted') notificationsBtn.textContent = 'Уведомления ✓';
+});
 logoutBtn.addEventListener('click', logout);
 chatBackBtn.addEventListener('click', backToChatList);
 findUserResult.addEventListener('click', (e) => {
