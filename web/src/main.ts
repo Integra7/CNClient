@@ -729,13 +729,22 @@ function renderMessages(chatId: string): void {
       status: p.status,
       isOwn: true,
     })),
-  ].sort((a, b) => a.timestamp - b.timestamp);
+  ].sort((a, b) => {
+    const t = a.timestamp - b.timestamp;
+    if (t !== 0) return t;
+    const oa = a.forwardFrom?.originalTimestamp ?? a.timestamp;
+    const ob = b.forwardFrom?.originalTimestamp ?? b.timestamp;
+    const ot = oa - ob;
+    if (ot !== 0) return ot;
+    return a.id < b.id ? -1 : 1;
+  });
 
   const groups: DisplayMessage[][] = [];
   let run: DisplayMessage[] = [];
   for (const m of combined) {
-    const bid = m.forwardBatchId ?? null;
-    if (bid && run.length > 0 && (run[0]?.forwardBatchId !== bid)) {
+    const bid = m.forwardBatchId ?? (m.forwardFrom ? `fwd:${m.forwardFrom.senderId}` : null);
+    const prevBid = run.length > 0 ? (run[0]?.forwardBatchId ?? (run[0]?.forwardFrom ? `fwd:${run[0].forwardFrom.senderId}` : null)) : null;
+    if (bid && run.length > 0 && prevBid !== bid) {
       groups.push([...run]);
       run = [];
     }
@@ -748,7 +757,8 @@ function renderMessages(chatId: string): void {
   if (run.length > 0) groups.push(run);
 
   for (const group of groups) {
-    const useBlock = group.length > 1 && (group[0]?.forwardBatchId != null);
+    const first = group[0];
+    const useBlock = group.length > 1 && (first?.forwardFrom != null);
     const container = useBlock ? document.createElement('div') : null;
     if (container) {
       container.className = 'forwarded-block';
@@ -761,12 +771,15 @@ function renderMessages(chatId: string): void {
       div.dataset.isOwn = String(m.isOwn);
       const status = m.status === 'sending' ? '⏳' : m.status === 'failed' ? '❌' : '';
       const editedLabel = m.editedAt ? '<span class="meta-edited">ред.</span>' : '';
-      const origTime = m.forwardFrom?.originalTimestamp != null ? formatTime(m.forwardFrom.originalTimestamp) : '';
-      const forwardLine = m.forwardFrom
-        ? `<span class="meta-forward">Переслано от ${escapeHtml(m.forwardFrom.senderName)}${origTime ? ` · ${origTime}` : ''}</span>`
+      const origTs = m.forwardFrom?.originalTimestamp;
+      const forwardLines = m.forwardFrom
+        ? [
+            `<span class="meta-forward">Переслано от ${escapeHtml(m.forwardFrom.senderName)}</span>`,
+            origTs != null ? `<span class="meta-forward-original">Оригинал: ${formatTime(origTs)}</span>` : '',
+          ].filter(Boolean).join('<br/>')
         : '';
       div.innerHTML = `
-        ${forwardLine ? `<div class="message-forward-from">${forwardLine}</div>` : ''}
+        ${forwardLines ? `<div class="message-forward-from">${forwardLines}</div>` : ''}
         <span class="content">${escapeHtml(m.content)}</span>
         <span class="meta-row">
           <span class="meta">${status} ${formatTime(m.timestamp)}</span>

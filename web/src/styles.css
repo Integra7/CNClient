@@ -926,7 +926,13 @@ h1 {
 .message .message-forward-from {
   font-size: 11px;
   color: var(--text-muted);
-  margin-bottom: 2px;
+  margin-bottom: 4px;
+  line-height: 1.35;
+}
+
+.message .meta-forward-original {
+  font-size: 10px;
+  opacity: 0.9;
 }
 
 .forwarded-block {
