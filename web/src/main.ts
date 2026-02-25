@@ -38,8 +38,6 @@ const loginUsername = document.getElementById('login-username') as HTMLInputElem
 const loginPassword = document.getElementById('login-password') as HTMLInputElement;
 const loginError = document.getElementById('login-error') as HTMLElement;
 const loginBtn = document.getElementById('login-btn') as HTMLButtonElement;
-const loginTokenInput = document.getElementById('login-token') as HTMLInputElement;
-const loginByTokenBtn = document.getElementById('login-by-token-btn') as HTMLButtonElement;
 const showRegisterBtn = document.getElementById('show-register-btn') as HTMLButtonElement;
 const registerBlock = document.getElementById('register-block') as HTMLElement;
 const loginFormBlock = document.getElementById('login-form-block') as HTMLElement;
@@ -641,18 +639,11 @@ function tryLoginWithCredentials(): void {
   authClient.connect('');
   authConnectionTimeout = setTimeout(() => {
     if (!authClient?.connected) {
-      loginError.textContent = 'Не удалось подключиться. Попробуйте «Войти по токену».';
+      loginError.textContent = 'Не удалось подключиться. Проверьте интернет и попробуйте снова.';
       loginError.hidden = false;
     }
     authConnectionTimeout = null;
   }, 10000);
-}
-
-function tryLoginByToken(): void {
-  const token = loginTokenInput.value.trim();
-  if (!token) return;
-  localStorage.setItem(STORAGE_TOKEN_KEY, token);
-  showApp(token);
 }
 
 function tryRegister(): void {
@@ -755,7 +746,6 @@ function sendMessage(): void {
 }
 
 loginBtn.addEventListener('click', tryLoginWithCredentials);
-loginByTokenBtn.addEventListener('click', tryLoginByToken);
 loginPassword.addEventListener('keydown', (e) => {
   if (e.key === 'Enter') tryLoginWithCredentials();
 });
