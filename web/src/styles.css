@@ -533,13 +533,27 @@ h1 {
   margin-bottom: 2px;
 }
 
+.chat-preview-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
 #chat-list .chat-preview {
-  display: block;
+  flex: 1;
+  min-width: 0;
   font-size: 11px;
   color: var(--text-muted);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+#chat-list .chat-time {
+  flex-shrink: 0;
+  font-size: 11px;
+  color: var(--text-muted);
 }
 
 .chat-main {
@@ -892,6 +906,12 @@ h1 {
   #chat-list li {
     min-height: 44px;
     padding: 12px 14px;
+    outline: 1px solid var(--border);
+    outline-offset: -1px;
+  }
+
+  #chat-list li.selected {
+    outline-color: var(--accent);
   }
 
   .find-user-item {

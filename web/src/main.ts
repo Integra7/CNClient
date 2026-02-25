@@ -149,14 +149,19 @@ function renderChatList(): void {
   for (const chatId of ids) {
     const list = messagesByChat.get(chatId) ?? [];
     const last = list.length > 0 ? list[list.length - 1] : undefined;
-    const preview = last ? (last.content.slice(0, 30) + (last.content.length > 30 ? '…' : '')) : 'Нет сообщений';
+    const rawPreview = last ? (last.content.slice(0, 30) + (last.content.length > 30 ? '…' : '')) : 'Нет сообщений';
+    const preview = last?.isOwn ? `Вы: ${rawPreview}` : rawPreview;
+    const timeStr = last ? formatChatListTime(last.timestamp) : '';
     const displayName = chatNames[chatId] ?? shortId(chatId);
     const li = document.createElement('li');
     li.dataset.chatId = chatId;
     li.className = selectedChatId === chatId ? 'selected' : '';
     li.innerHTML = `
       <span class="chat-id">${escapeHtml(displayName)}</span>
-      <span class="chat-preview">${escapeHtml(preview)}</span>
+      <span class="chat-preview-row">
+        <span class="chat-preview">${escapeHtml(preview)}</span>
+        <span class="chat-time">${escapeHtml(timeStr)}</span>
+      </span>
     `;
     li.addEventListener('click', () => selectChat(chatId));
     chatListEl.appendChild(li);
@@ -560,6 +565,23 @@ function escapeHtml(s: string): string {
 function formatTime(ts: number): string {
   const d = new Date(ts);
   return d.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+}
+
+/** Время для списка чатов (как в Telegram): сейчас, вчера, дата */
+function formatChatListTime(ts: number): string {
+  const d = new Date(ts);
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const yesterday = new Date(today);
+  yesterday.setDate(yesterday.getDate() - 1);
+  const msgDay = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  if (msgDay.getTime() === today.getTime()) {
+    return d.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+  }
+  if (msgDay.getTime() === yesterday.getTime()) {
+    return 'вчера';
+  }
+  return d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' });
 }
 
 function showApp(token: string): void {
