@@ -117,9 +117,9 @@ const messagesEl = document.getElementById('messages') as HTMLElement;
 const messagesSelectionToolbar = document.getElementById('messages-selection-toolbar') as HTMLElement;
 const selectionDeleteBtn = document.getElementById('selection-delete-btn') as HTMLButtonElement;
 const selectionForwardBtn = document.getElementById('selection-forward-btn') as HTMLButtonElement;
+const selectionEditBtn = document.getElementById('selection-edit-btn') as HTMLButtonElement;
 const selectionCancelBtn = document.getElementById('selection-cancel-btn') as HTMLButtonElement;
 const contextMenu = document.getElementById('context-menu') as HTMLElement;
-const contextMenuDeleteChatBtn = document.getElementById('context-menu-delete-chat') as HTMLButtonElement;
 const modalOverlay = document.getElementById('modal-overlay') as HTMLElement;
 const modalDeleteMessages = document.getElementById('modal-delete-messages') as HTMLElement;
 const modalDeleteMessagesText = document.getElementById('modal-delete-messages-text') as HTMLElement;
@@ -746,10 +746,6 @@ function renderMessages(chatId: string): void {
       e.stopPropagation();
       toggleMessageSelection(m.id);
     });
-    div.addEventListener('contextmenu', (e) => {
-      e.preventDefault();
-      showMessageContextMenu(e.clientX, e.clientY, m.id, m.isOwn);
-    });
     messagesEl.appendChild(div);
   }
   messagesSelectionToolbar.hidden = selectedMessageIds.size === 0;
@@ -760,26 +756,20 @@ function toggleMessageSelection(messageId: string): void {
   if (selectedMessageIds.has(messageId)) selectedMessageIds.delete(messageId);
   else selectedMessageIds.add(messageId);
   if (selectedChatId) renderMessages(selectedChatId);
-  messagesSelectionToolbar.hidden = selectedMessageIds.size === 0;
-}
-
-function showMessageContextMenu(x: number, y: number, messageId: string, isOwn: boolean): void {
-  contextMenuTarget = { type: 'message', messageId, isOwn };
-  (contextMenu.querySelector('[data-action="delete"]') as HTMLElement).hidden = false;
-  (contextMenu.querySelector('[data-action="edit"]') as HTMLElement).hidden = !isOwn;
-  (contextMenu.querySelector('[data-action="forward"]') as HTMLElement).hidden = false;
-  contextMenuDeleteChatBtn.hidden = true;
-  contextMenu.style.left = `${x}px`;
-  contextMenu.style.top = `${y}px`;
-  contextMenu.hidden = false;
+  const hasSelection = selectedMessageIds.size > 0;
+  messagesSelectionToolbar.hidden = !hasSelection;
+  if (hasSelection && selectedChatId) {
+    const list = messagesByChat.get(selectedChatId) ?? [];
+    const singleId = selectedMessageIds.size === 1 ? [...selectedMessageIds][0] : null;
+    const singleMsg = singleId ? list.find((x) => x.id === singleId) : null;
+    const showEdit = selectedMessageIds.size === 1 && singleMsg?.isOwn === true;
+    selectionEditBtn.style.visibility = showEdit ? 'visible' : 'hidden';
+    selectionEditBtn.disabled = !showEdit;
+  }
 }
 
 function showChatContextMenu(x: number, y: number, chatId: string): void {
   contextMenuTarget = { type: 'chat', chatId };
-  (contextMenu.querySelector('[data-action="delete"]') as HTMLElement).hidden = true;
-  (contextMenu.querySelector('[data-action="edit"]') as HTMLElement).hidden = true;
-  (contextMenu.querySelector('[data-action="forward"]') as HTMLElement).hidden = true;
-  contextMenuDeleteChatBtn.hidden = false;
   contextMenu.style.left = `${x}px`;
   contextMenu.style.top = `${y}px`;
   contextMenu.hidden = false;
@@ -791,9 +781,7 @@ function hideContextMenu(): void {
 }
 
 function getIdsToActOn(): string[] {
-  if (selectedMessageIds.size > 0) return [...selectedMessageIds];
-  if (contextMenuTarget?.type === 'message') return [contextMenuTarget.messageId];
-  return [];
+  return selectedMessageIds.size > 0 ? [...selectedMessageIds] : [];
 }
 
 function openDeleteMessagesModal(): void {
@@ -1220,15 +1208,11 @@ messageInput.addEventListener('keydown', (e) => {
 });
 
 contextMenu.addEventListener('click', (e) => {
-  const btn = (e.target as HTMLElement).closest('button[data-action]');
+  const btn = (e.target as HTMLElement).closest('button[data-action="delete-chat"]');
   if (!btn) return;
-  const action = btn.getAttribute('data-action');
   const target = contextMenuTarget;
   hideContextMenu();
-  if (action === 'delete') openDeleteMessagesModal();
-  else if (action === 'edit' && target?.type === 'message') openEditMessageModal(selectedChatId, target.messageId);
-  else if (action === 'forward') openForwardModal();
-  else if (action === 'delete-chat' && target?.type === 'chat') openDeleteChatModal(target.chatId);
+  if (target?.type === 'chat') openDeleteChatModal(target.chatId);
 });
 
 document.addEventListener('click', (e) => {
@@ -1237,6 +1221,15 @@ document.addEventListener('click', (e) => {
 
 selectionDeleteBtn.addEventListener('click', () => openDeleteMessagesModal());
 selectionForwardBtn.addEventListener('click', () => openForwardModal());
+selectionEditBtn.addEventListener('click', () => {
+  const chatId = selectedChatId;
+  if (selectedMessageIds.size !== 1 || !chatId) return;
+  const messageId = [...selectedMessageIds][0];
+  if (messageId === undefined) return;
+  const list = messagesByChat.get(chatId) ?? [];
+  const msg = list.find((m) => m.id === messageId);
+  if (msg?.isOwn) openEditMessageModal(chatId, messageId);
+});
 selectionCancelBtn.addEventListener('click', () => {
   selectedMessageIds.clear();
   messagesSelectionToolbar.hidden = true;

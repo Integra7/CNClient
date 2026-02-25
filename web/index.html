@@ -78,6 +78,7 @@
             <div id="messages-selection-toolbar" class="selection-toolbar" hidden>
               <button type="button" id="selection-delete-btn">Удалить</button>
               <button type="button" id="selection-forward-btn">Переслать</button>
+              <button type="button" id="selection-edit-btn" class="selection-edit-btn">Редактировать</button>
               <button type="button" id="selection-cancel-btn">Отменить</button>
             </div>
             <div id="messages"></div>
@@ -89,10 +90,7 @@
         </main>
       </div>
       <div id="context-menu" class="context-menu" hidden>
-        <button type="button" data-action="delete">Удалить</button>
-        <button type="button" data-action="edit">Редактировать</button>
-        <button type="button" data-action="forward">Переслать</button>
-        <button type="button" data-action="delete-chat" id="context-menu-delete-chat" hidden>Удалить чат</button>
+        <button type="button" data-action="delete-chat" id="context-menu-delete-chat">Удалить чат</button>
       </div>
       <div id="modal-overlay" class="modal-overlay" hidden>
         <div id="modal-delete-messages" class="modal" hidden>

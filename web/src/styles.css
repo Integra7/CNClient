@@ -729,25 +729,39 @@ h1 {
 
 .selection-toolbar {
   display: flex;
-  gap: 8px;
-  padding: 8px 12px;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 16px;
+  margin: 0 12px 8px;
   background: var(--surface);
-  border-bottom: 1px solid var(--border);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
 }
 
 .selection-toolbar button {
-  padding: 6px 12px;
-  font-size: 12px;
-  border-radius: var(--radius);
+  padding: 8px 14px;
+  font-size: 13px;
+  border-radius: 8px;
   border: 1px solid var(--border);
   background: var(--surface-hover);
   color: var(--text);
   font-family: var(--font-mono);
   cursor: pointer;
+  transition: background 0.15s ease;
 }
 
-.selection-toolbar button:hover {
+.selection-toolbar button:hover:not(:disabled) {
   background: var(--border);
+}
+
+.selection-toolbar button:disabled {
+  cursor: default;
+  opacity: 0.5;
+}
+
+.selection-toolbar .selection-edit-btn {
+  min-width: 7em;
 }
 
 .context-menu {
