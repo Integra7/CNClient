@@ -165,14 +165,17 @@ let contextMenuTarget: ContextMenuTarget = null;
 let editMessageTarget: { chatId: string; messageId: string } | null = null;
 let pendingDeleteMessageIds: string[] = [];
 
-/** Маппинг полей пересланного сообщения из API бэкенда в DisplayMessage.forwardFrom */
+/** Маппинг полей пересланного сообщения из API бэкенда в DisplayMessage.forwardFrom.
+ * Считаем сообщение пересланным, если isForwarded === true ИЛИ заданы поля forwardFrom*
+ * (чтобы отображать все сообщения из пачки пересылки, в т.ч. от другого участника). */
 function mapForwardFrom(m: {
   isForwarded?: boolean;
   forwardFromSenderId?: string | null;
   forwardFromSenderName?: string | null;
   forwardFromTimestamp?: number | null;
 }): DisplayMessage['forwardFrom'] | undefined {
-  if (!m.isForwarded) return undefined;
+  const hasForwardData = m.forwardFromSenderId != null || m.forwardFromSenderName != null;
+  if (!m.isForwarded && !hasForwardData) return undefined;
   return {
     senderId: m.forwardFromSenderId ?? '',
     senderName: m.forwardFromSenderName ?? 'Unknown',
