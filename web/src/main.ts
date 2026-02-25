@@ -13,11 +13,13 @@ import {
   saveSelectedChatId,
   loadChatNames,
   saveChatNames,
+  loadLastRead,
+  saveLastRead,
 } from './persistence';
 import './styles.css';
 
 /** Звук при входящем сообщении (файл в public/sounds) */
-const NOTIFICATION_SOUND_URL = `${import.meta.env.BASE_URL}sounds/IceShatter42.wav`;
+const NOTIFICATION_SOUND_URL = `${import.meta.env.BASE_URL}sounds/when-604.mp3`;
 
 function playNotificationSound(): void {
   try {
@@ -79,12 +81,33 @@ let findUserDebounceTimer: ReturnType<typeof setTimeout> | null = null;
 /** Таймаут показа ошибки при входе/регистрации, если сокет не открылся */
 let authConnectionTimeout: ReturnType<typeof setTimeout> | null = null;
 
+/** Время последнего прочтения по chatId (для подсчёта непрочитанных) */
+let lastReadByChat: Record<string, number> = {};
+/** Количество непрочитанных сообщений по chatId */
+let unreadByChat: Record<string, number> = {};
+
 function persistMessages(): void {
   if (currentUserId) saveMessagesForUser(currentUserId, messagesByChat);
 }
 
 function persistChatNames(): void {
   if (currentUserId) saveChatNames(currentUserId, chatNames);
+}
+
+/** Пересчитать непрочитанные из сообщений и lastRead (при загрузке) */
+function recomputeUnreadFromMessages(): void {
+  unreadByChat = {};
+  for (const [chatId, list] of messagesByChat) {
+    const threshold = lastReadByChat[chatId] ?? 0;
+    const count = list.filter((m) => !m.isOwn && m.timestamp > threshold).length;
+    if (count > 0) unreadByChat[chatId] = count;
+  }
+}
+
+/** Обновить текст кнопки «← Чаты» на мобильных (общее кол-во непрочитанных) */
+function updateBackButtonUnread(): void {
+  const total = Object.values(unreadByChat).reduce((s, n) => s + n, 0);
+  chatBackBtn.textContent = total > 0 ? `← Чаты (${total})` : '← Чаты';
 }
 
 function setConnectionState(state: 'disconnected' | 'connecting' | 'connected'): void {
@@ -95,6 +118,7 @@ function setConnectionState(state: 'disconnected' | 'connecting' | 'connected'):
   if (state === 'connected') {
     wsClient?.getChats();
     renderChatList();
+    updateBackButtonUnread();
     if (selectedChatId) {
       chatSection.classList.add('chat-open');
       chatPlaceholder.setAttribute('hidden', '');
@@ -149,11 +173,16 @@ function renderChatList(): void {
     const preview = last?.isOwn ? `Вы: ${rawPreview}` : rawPreview;
     const timeStr = last ? formatChatListTime(last.timestamp) : '';
     const displayName = chatNames[chatId] ?? shortId(chatId);
+    const unread = unreadByChat[chatId] ?? 0;
+    const unreadBadge = unread > 0 ? `<span class="chat-unread-badge">${unread > 99 ? '99+' : unread}</span>` : '';
     const li = document.createElement('li');
     li.dataset.chatId = chatId;
     li.className = selectedChatId === chatId ? 'selected' : '';
     li.innerHTML = `
-      <span class="chat-id">${escapeHtml(displayName)}</span>
+      <span class="chat-id-row">
+        <span class="chat-id">${escapeHtml(displayName)}</span>
+        ${unreadBadge}
+      </span>
       <span class="chat-preview-row">
         <span class="chat-preview">${escapeHtml(preview)}</span>
         <span class="chat-time">${escapeHtml(timeStr)}</span>
@@ -168,11 +197,17 @@ function selectChat(chatId: string): void {
   selectedChatId = chatId;
   composeToUsername = null;
   if (currentUserId) saveSelectedChatId(currentUserId, chatId);
+  unreadByChat[chatId] = 0;
+  const list = messagesByChat.get(chatId) ?? [];
+  const lastTs = list.length > 0 ? Math.max(...list.map((m) => m.timestamp)) : 0;
+  lastReadByChat[chatId] = Math.max(lastReadByChat[chatId] ?? 0, lastTs, Date.now());
+  if (currentUserId) saveLastRead(currentUserId, lastReadByChat);
   chatSection.classList.add('chat-open');
   chatPlaceholder.setAttribute('hidden', '');
   chatPanel.removeAttribute('hidden');
   chatHeader.textContent = chatNames[chatId] ?? shortId(chatId);
   renderChatList();
+  updateBackButtonUnread();
   renderMessages(chatId);
   wsClient?.getMessages(chatId);
   messageInput.focus();
@@ -511,9 +546,21 @@ function handleServerMessage(msg: ServerMessage): void {
           list.sort((a, b) => a.timestamp - b.timestamp);
           messagesByChat.set(msg.chatId, list);
           persistMessages();
+          if (msg.senderId !== currentUserId) {
+            playNotificationSound();
+            if (selectedChatId !== msg.chatId) {
+              unreadByChat[msg.chatId] = (unreadByChat[msg.chatId] ?? 0) + 1;
+            }
+          }
+          if (selectedChatId === msg.chatId) {
+            unreadByChat[msg.chatId] = 0;
+            const ts = msg.timestamp ?? Date.now();
+            lastReadByChat[msg.chatId] = Math.max(lastReadByChat[msg.chatId] ?? 0, ts);
+            if (currentUserId) saveLastRead(currentUserId, lastReadByChat);
+          }
           renderChatList();
+          updateBackButtonUnread();
           if (selectedChatId === msg.chatId) renderMessages(selectedChatId);
-          if (msg.senderId !== currentUserId) playNotificationSound();
         }
       }
       break;
@@ -590,6 +637,8 @@ function showApp(token: string): void {
   const saved = loadMessagesForUser(token);
   saved.forEach((list, chatId) => messagesByChat.set(chatId, list));
   Object.assign(chatNames, loadChatNames(token));
+  lastReadByChat = loadLastRead(token);
+  recomputeUnreadFromMessages();
   const savedChat = loadSelectedChatId(token);
   if (savedChat) selectedChatId = savedChat;
   wsClient.connect(token);
@@ -601,6 +650,8 @@ function logout(): void {
   currentUserId = '';
   selectedChatId = '';
   composeToUsername = null;
+  lastReadByChat = {};
+  unreadByChat = {};
   clearSessionToken();
   appMain.setAttribute('hidden', '');
   loginScreen.removeAttribute('hidden');
