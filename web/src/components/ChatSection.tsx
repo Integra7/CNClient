@@ -12,9 +12,10 @@ export function ChatSection() {
       getChatIdsSorted(
         state.messagesByChat,
         state.chatNames,
-        state.deletedChatIdsForMe
+        state.deletedChatIdsForMe,
+        state.chatLastMessageTime
       ),
-    [state.messagesByChat, state.chatNames, state.deletedChatIdsForMe]
+    [state.messagesByChat, state.chatNames, state.deletedChatIdsForMe, state.chatLastMessageTime]
   );
 
   const isOpen = state.connectionState === 'connected';

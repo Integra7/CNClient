@@ -127,10 +127,13 @@ export function createServerMessageHandler(
           const data = JSON.parse(msg.content) as { chats?: ChatFromServer[] };
           const chats = data.chats ?? [];
           const names: Record<string, string> = { ...state.chatNames };
+          const lastMessageTimes: Record<string, number> = {};
           for (const c of chats) {
             names[c.id] = c.name ?? names[c.id] ?? shortIdFn(c.id);
+            if (c.lastMessageTime != null) lastMessageTimes[c.id] = c.lastMessageTime;
           }
           dispatch({ type: 'SET_CHAT_NAMES', payload: names });
+          dispatch({ type: 'SET_CHAT_LAST_MESSAGE_TIMES', payload: lastMessageTimes });
           for (const c of chats) {
             if (!state.messagesByChat[c.id]) {
               dispatch({ type: 'MERGE_MESSAGES', payload: { chatId: c.id, messages: [] } });
@@ -211,6 +214,12 @@ export function createServerMessageHandler(
             chatId: ackChatId,
           },
         });
+        if (ackChatId) {
+          dispatch({
+            type: 'SET_CHAT_LAST_MESSAGE_TIME',
+            payload: { chatId: ackChatId, time: pending.sentAt },
+          });
+        }
         persist(getState());
         break;
       }
@@ -277,6 +286,10 @@ export function createServerMessageHandler(
         dispatch({
           type: 'MERGE_MESSAGES',
           payload: { chatId: msg.chatId, messages: [...list, newMsg].sort((a, b) => a.timestamp - b.timestamp) },
+        });
+        dispatch({
+          type: 'SET_CHAT_LAST_MESSAGE_TIME',
+          payload: { chatId: msg.chatId, time: newMsg.timestamp },
         });
 
         if (msg.senderId !== currentUserId) {

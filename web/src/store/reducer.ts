@@ -26,6 +26,7 @@ export const initialAppState: AppState = {
   messagesByChat: {},
   pendingByClientId: {},
   chatNames: {},
+  chatLastMessageTime: {},
   selectedChatId: '',
   composeToUsername: null,
   lastReadByChat: {},
@@ -167,6 +168,19 @@ export function appReducer(state: AppState, action: AppAction): AppState {
 
     case 'SET_CHAT_NAMES':
       return { ...state, chatNames: { ...action.payload } };
+    case 'SET_CHAT_LAST_MESSAGE_TIMES':
+      return { ...state, chatLastMessageTime: { ...action.payload } };
+    case 'SET_CHAT_LAST_MESSAGE_TIME':
+      return {
+        ...state,
+        chatLastMessageTime: {
+          ...state.chatLastMessageTime,
+          [action.payload.chatId]: Math.max(
+            state.chatLastMessageTime[action.payload.chatId] ?? 0,
+            action.payload.time
+          ),
+        },
+      };
     case 'SET_CHAT_NAME':
       return {
         ...state,

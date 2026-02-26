@@ -8,7 +8,8 @@ export function Modals() {
   const chatIds = getChatIdsSorted(
     state.messagesByChat,
     state.chatNames,
-    state.deletedChatIdsForMe
+    state.deletedChatIdsForMe,
+    state.chatLastMessageTime
   );
 
   const closeModals = () => dispatch({ type: 'CLOSE_MODAL' });

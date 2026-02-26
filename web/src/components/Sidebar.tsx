@@ -124,11 +124,18 @@ export function Sidebar({ chatIds }: SidebarProps) {
         {chatIds.map((chatId) => {
           const list = state.messagesByChat[chatId] ?? [];
           const last = list.length > 0 ? list[list.length - 1] : undefined;
+          const serverLastTime = state.chatLastMessageTime[chatId];
           const rawPreview = last
             ? last.content.slice(0, 30) + (last.content.length > 30 ? '…' : '')
-            : 'Нет сообщений';
+            : serverLastTime
+              ? 'Сообщение'
+              : 'Нет сообщений';
           const preview = last?.isOwn ? `Вы: ${rawPreview}` : rawPreview;
-          const timeStr = last ? formatChatListTime(last.timestamp) : '';
+          const timeStr = last
+            ? formatChatListTime(last.timestamp)
+            : serverLastTime
+              ? formatChatListTime(serverLastTime)
+              : '';
           const displayName = state.chatNames[chatId] ?? shortId(chatId);
           const unread = state.unreadByChat[chatId] ?? 0;
           const unreadBadge =

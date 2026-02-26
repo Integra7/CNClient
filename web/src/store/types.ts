@@ -21,6 +21,8 @@ export interface AppState {
   messagesByChat: Record<string, DisplayMessage[]>;
   pendingByClientId: Record<string, PendingMessage>;
   chatNames: Record<string, string>;
+  /** Время последнего сообщения в чате из ответа сервера (chats_list), для сортировки и превью */
+  chatLastMessageTime: Record<string, number>;
   selectedChatId: string;
   composeToUsername: string | null;
   lastReadByChat: Record<string, number>;
@@ -55,6 +57,8 @@ export type AppAction =
   | { type: 'REMOVE_PENDING'; payload: string }
   | { type: 'ACK_MESSAGE'; payload: { clientMessageId: string; serverId: string; chatId?: string } }
   | { type: 'SET_CHAT_NAMES'; payload: Record<string, string> }
+  | { type: 'SET_CHAT_LAST_MESSAGE_TIMES'; payload: Record<string, number> }
+  | { type: 'SET_CHAT_LAST_MESSAGE_TIME'; payload: { chatId: string; time: number } }
   | { type: 'SET_CHAT_NAME'; payload: { chatId: string; name: string } }
   | { type: 'SELECT_CHAT'; payload: string }
   | { type: 'OPEN_COMPOSE'; payload: string }
