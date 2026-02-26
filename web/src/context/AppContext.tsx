@@ -102,8 +102,18 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       messagesByChat[chatId] = list;
     });
     const chatNames = loadChatNames(token);
-    const lastReadByChat = loadLastRead(token);
+    let lastReadByChat = loadLastRead(token);
     const selectedChatId = loadSelectedChatId(token) ?? '';
+    // Чат, который был открыт при последнем визите, считаем прочитанным до последнего сообщения
+    if (selectedChatId) {
+      const list = messagesByChat[selectedChatId] ?? [];
+      const lastTs = list.length > 0 ? Math.max(...list.map((m) => m.timestamp)) : 0;
+      const current = lastReadByChat[selectedChatId] ?? 0;
+      lastReadByChat = {
+        ...lastReadByChat,
+        [selectedChatId]: Math.max(current, lastTs, Date.now()),
+      };
+    }
     const unreadByChat: Record<string, number> = {};
     for (const [chatId, list] of Object.entries(messagesByChat)) {
       const threshold = lastReadByChat[chatId] ?? 0;
