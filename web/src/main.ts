@@ -541,7 +541,7 @@ function handleServerMessage(msg: ServerMessage): void {
             content: m.content,
             sequenceNumber: m.sequenceNumber,
             timestamp: m.timestamp ?? m.createdAt ?? m.updatedAt ?? 0,
-            status: 'sent',
+            status: (m.status === 'read' || m.status === 'delivered' || m.status === 'sent' ? m.status : 'sent') as DisplayMessage['status'],
             isOwn: m.senderId === currentUserId,
             editedAt: m.editedAt,
             forwardFrom: mapForwardFrom(m),
@@ -633,6 +633,7 @@ function handleServerMessage(msg: ServerMessage): void {
         );
         if (!existing) {
           const ext = msg as ServerMessage & {
+            status?: string;
             editedAt?: number;
             isForwarded?: boolean;
             forwardFromSenderId?: string | null;
@@ -649,7 +650,7 @@ function handleServerMessage(msg: ServerMessage): void {
             content: msg.content,
             sequenceNumber: msg.sequenceNumber,
             timestamp: msg.timestamp ?? Date.now(),
-            status: 'sent',
+            status: (ext.status === 'read' || ext.status === 'delivered' || ext.status === 'sent' ? ext.status : 'sent') as DisplayMessage['status'],
             isOwn: msg.senderId === currentUserId,
             editedAt: ext.editedAt,
             forwardFrom: mapForwardFrom(ext),
@@ -739,6 +740,22 @@ function handleServerMessage(msg: ServerMessage): void {
       }
       break;
     }
+    case 'messages_read': {
+      if (!msg.chatId || !msg.content) break;
+      try {
+        const data = typeof msg.content === 'string' ? JSON.parse(msg.content) : msg.content as { messageIds?: string[]; readerId?: string };
+        const cid = msg.chatId;
+        const list = messagesByChat.get(cid) ?? [];
+        for (const mid of data.messageIds ?? []) {
+          const item = list.find((m) => m.id === mid);
+          if (item && item.isOwn) item.status = 'read';
+        }
+        persistMessages();
+        if (selectedChatId === cid) renderMessages(cid);
+        renderChatList();
+      } catch {}
+      break;
+    }
     default:
       break;
   }
@@ -794,6 +811,7 @@ function renderMessages(chatId: string): void {
   }
   if (run.length > 0) groups.push(run);
 
+  const readThreshold = lastReadByChat[chatId] ?? 0;
   for (const group of groups) {
     const first = group[0];
     const useBlock = group.length >= 1 && (first?.forwardFrom != null);
@@ -802,12 +820,15 @@ function renderMessages(chatId: string): void {
       container.className = 'forwarded-block';
       const blockSelected = group.some((m) => selectedMessageIds.has(m.id));
       if (blockSelected) container.classList.add('selected');
+      const blockHasUnread = group.some((m) => !m.isOwn && m.timestamp > readThreshold);
+      if (blockHasUnread) container.classList.add('forwarded-block-unread');
       messagesEl.appendChild(container);
     }
     for (const m of group) {
+      const isUnread = !m.isOwn && m.timestamp > readThreshold;
       const div = document.createElement('div');
       const insideBlock = !!container;
-      div.className = `message ${m.isOwn ? 'own' : 'other'}` + (insideBlock ? '' : (selectedMessageIds.has(m.id) ? ' selected' : ''));
+      div.className = `message ${m.isOwn ? 'own' : 'other'}${isUnread ? ' unread' : ''}` + (insideBlock ? '' : (selectedMessageIds.has(m.id) ? ' selected' : ''));
       div.dataset.messageId = m.id;
       div.dataset.isOwn = String(m.isOwn);
       const status = m.status === 'sending' ? '⏳' : m.status === 'failed' ? '❌' : '';
@@ -906,10 +927,10 @@ function openDeleteMessagesModal(): void {
   pendingDeleteMessageIds = ids;
   const list = messagesByChat.get(selectedChatId) ?? [];
   const toDelete = list.filter((m) => ids.includes(m.id));
-  const hasOwn = toDelete.some((m) => m.isOwn);
+  const allOwn = toDelete.length > 0 && toDelete.every((m) => m.isOwn);
   modalDeleteMessagesText.textContent = toDelete.length === 1 ? 'Удалить сообщение?' : `Удалить сообщений: ${toDelete.length}?`;
-  modalDeleteMessagesForAllWrap.hidden = !hasOwn;
-  if (hasOwn) modalDeleteMessagesForAll.checked = false;
+  modalDeleteMessagesForAllWrap.hidden = !allOwn;
+  if (allOwn) modalDeleteMessagesForAll.checked = false;
   modalDeleteMessages.hidden = false;
   modalDeleteChat.hidden = true;
   modalForward.hidden = true;

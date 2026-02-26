@@ -686,6 +686,12 @@ h1 {
   border: 1px solid var(--border);
 }
 
+.message.other.unread {
+  opacity: 0.82;
+  background: var(--surface);
+  border-color: var(--border);
+}
+
 .message .content {
   display: block;
   word-break: break-word;
@@ -876,14 +882,44 @@ h1 {
 }
 
 .modal-checkbox {
-  display: block;
+  display: flex;
+  align-items: center;
+  gap: 10px;
   margin-bottom: 14px;
   font-size: 13px;
+  color: var(--text);
   cursor: pointer;
+  font-family: var(--font-mono);
 }
 
 .modal-checkbox input {
-  margin-right: 8px;
+  margin: 0;
+}
+
+.modal-checkbox input[type="checkbox"] {
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  border: 2px solid var(--border);
+  border-radius: 4px;
+  background: var(--surface);
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.modal-checkbox input[type="checkbox"]:hover {
+  border-color: var(--accent);
+  background: var(--surface-hover);
+}
+
+.modal-checkbox input[type="checkbox"]:checked {
+  background: var(--accent);
+  border-color: var(--accent);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 10'%3E%3Cpath fill='none' stroke='%230d0d0f' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' d='M1 5l3 3 7-7'/%3E%3C/svg%3E");
+  background-size: 12px 10px;
+  background-repeat: no-repeat;
+  background-position: center;
 }
 
 .modal-buttons {
@@ -990,6 +1026,18 @@ h1 {
 
 .forwarded-block .message.other {
   align-self: flex-start;
+}
+
+.forwarded-block.forwarded-block-unread {
+  background: rgba(167, 139, 250, 0.04);
+  outline-color: rgba(167, 139, 250, 0.2);
+  border-color: rgba(167, 139, 250, 0.12);
+}
+
+.forwarded-block .message.other.unread {
+  opacity: 0.82;
+  background: var(--surface);
+  border-color: var(--border);
 }
 
 .forwarded-block .message .meta-row {

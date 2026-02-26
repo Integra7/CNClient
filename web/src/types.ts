@@ -17,7 +17,7 @@ export interface ServerMessage {
   error?: string;
 }
 
-export type MessageStatus = 'sending' | 'sent' | 'failed';
+export type MessageStatus = 'sending' | 'sent' | 'delivered' | 'read' | 'failed';
 
 export interface PendingMessage {
   clientMessageId: string;
