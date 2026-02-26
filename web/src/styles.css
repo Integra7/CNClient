@@ -705,13 +705,32 @@ h1 {
 }
 
 .message .meta-status {
-  margin-right: 4px;
+  margin-right: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  opacity: 1;
 }
-.message .meta-status-sent,
-.message .meta-status-delivered {
-  color: var(--text-muted, rgba(255, 255, 255, 0.6));
+/* Свои сообщения: тёмные галочки на фиолетовом пузыре — хороший контраст */
+.message.own .meta-status-sent {
+  color: var(--bg);
+  opacity: 0.75;
 }
-.message .meta-status-read {
+.message.own .meta-status-delivered {
+  color: var(--bg);
+  opacity: 0.9;
+}
+.message.own .meta-status-read {
+  color: var(--bg);
+  background: rgba(255, 255, 255, 0.35);
+  padding: 1px 5px;
+  border-radius: 6px;
+}
+/* Чужие сообщения (если вдруг показываем) */
+.message.other .meta-status-sent,
+.message.other .meta-status-delivered {
+  color: var(--text-muted);
+}
+.message.other .meta-status-read {
   color: var(--accent);
 }
 
