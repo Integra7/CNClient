@@ -115,7 +115,6 @@ const chatHeader = document.getElementById('chat-header') as HTMLElement;
 const chatBackBtn = document.getElementById('chat-back-btn') as HTMLButtonElement;
 const messagesEl = document.getElementById('messages') as HTMLElement;
 const selectionToolbarZone = document.getElementById('selection-toolbar-zone') as HTMLElement;
-const messagesSelectionToolbar = document.getElementById('messages-selection-toolbar') as HTMLElement;
 const selectionDeleteBtn = document.getElementById('selection-delete-btn') as HTMLButtonElement;
 const selectionForwardBtn = document.getElementById('selection-forward-btn') as HTMLButtonElement;
 const selectionEditBtn = document.getElementById('selection-edit-btn') as HTMLButtonElement;
@@ -220,6 +219,7 @@ function setConnectionState(state: 'disconnected' | 'connecting' | 'connected'):
       chatPanel.removeAttribute('hidden');
       chatHeader.textContent = chatNames[selectedChatId] ?? shortId(selectedChatId);
       renderMessages(selectedChatId);
+      scrollMessagesToBottom();
       wsClient?.getMessages(selectedChatId);
       updateSelectionToolbarVisibility();
     } else if (composeToUsername) {
@@ -312,6 +312,7 @@ function selectChat(chatId: string): void {
   renderChatList();
   updateBackButtonUnread();
   renderMessages(chatId);
+  scrollMessagesToBottom();
   wsClient?.getMessages(chatId);
   messageInput.focus();
 }
@@ -855,17 +856,16 @@ function renderMessages(chatId: string): void {
     }
   }
   updateSelectionToolbarVisibility();
-  scrollMessagesToBottom();
 }
 
 function updateSelectionToolbarVisibility(): void {
   const hasSelection = selectedMessageIds.size > 0;
   if (hasSelection) {
-    selectionToolbarZone.removeAttribute('hidden');
-    messagesSelectionToolbar.removeAttribute('hidden');
+    selectionToolbarZone.classList.add('selection-toolbar-zone-visible');
   } else {
-    selectionToolbarZone.setAttribute('hidden', '');
-    messagesSelectionToolbar.setAttribute('hidden', '');
+    selectionToolbarZone.classList.remove('selection-toolbar-zone-visible');
+    selectionEditBtn.style.visibility = 'hidden';
+    selectionEditBtn.disabled = true;
   }
   if (hasSelection && selectedChatId) {
     const list = messagesByChat.get(selectedChatId) ?? [];

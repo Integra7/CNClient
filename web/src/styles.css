@@ -728,11 +728,15 @@ h1 {
 }
 
 .selection-toolbar-zone {
+  display: none;
   flex: 0 0 auto;
   min-height: 48px;
-  display: flex;
   align-items: center;
   padding: 6px 12px 8px;
+}
+
+.selection-toolbar-zone.selection-toolbar-zone-visible {
+  display: flex;
 }
 
 .selection-toolbar {
