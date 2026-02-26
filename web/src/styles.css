@@ -632,6 +632,14 @@ h1 {
   min-width: 0;
 }
 
+.chat-messages-wrap {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+
 #messages {
   flex: 1;
   min-height: 0;
@@ -729,14 +737,20 @@ h1 {
 
 .selection-toolbar-zone {
   display: none;
-  flex: 0 0 auto;
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 10;
   min-height: 48px;
   align-items: center;
   padding: 6px 12px 8px;
+  pointer-events: none;
 }
 
 .selection-toolbar-zone.selection-toolbar-zone-visible {
   display: flex;
+  pointer-events: auto;
 }
 
 .selection-toolbar {
