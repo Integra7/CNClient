@@ -791,6 +791,14 @@ h1 {
   min-width: 7em;
 }
 
+.selection-toolbar .selection-edit-label-short {
+  display: none;
+}
+
+.selection-toolbar .selection-edit-label-full {
+  display: inline;
+}
+
 .selection-toolbar .selection-close-btn {
   margin-left: auto;
   padding: 4px 10px;
@@ -1059,6 +1067,18 @@ h1 {
 
   .back-link {
     margin-top: 20px;
+  }
+
+  .selection-toolbar .selection-edit-label-full {
+    display: none;
+  }
+
+  .selection-toolbar .selection-edit-label-short {
+    display: inline;
+  }
+
+  .selection-toolbar .selection-edit-btn {
+    min-width: 3.5em;
   }
 
   .app-main {
