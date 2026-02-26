@@ -526,11 +526,15 @@ function handleServerMessage(msg: ServerMessage): void {
       try {
         const data = JSON.parse(msg.content) as { messages?: MessageFromServer[] };
         const list = messagesByChat.get(msg.chatId) ?? [];
-        const existingIds = new Set(list.map((m) => m.id));
+        const serverStatus = (s: string): DisplayMessage['status'] =>
+          (s === 'read' || s === 'delivered' || s === 'sent' ? s : 'sent') as DisplayMessage['status'];
         for (const m of data.messages ?? []) {
           if (m.isDeleted) continue;
-          if (existingIds.has(m.id)) continue;
-          existingIds.add(m.id);
+          const existing = list.find((x) => x.id === m.id);
+          if (existing) {
+            existing.status = serverStatus(m.status);
+            continue;
+          }
           const sm = m as MessageFromServer & { senderUsername?: string | null };
           list.push({
             id: m.id,
@@ -541,7 +545,7 @@ function handleServerMessage(msg: ServerMessage): void {
             content: m.content,
             sequenceNumber: m.sequenceNumber,
             timestamp: m.timestamp ?? m.createdAt ?? m.updatedAt ?? 0,
-            status: (m.status === 'read' || m.status === 'delivered' || m.status === 'sent' ? m.status : 'sent') as DisplayMessage['status'],
+            status: serverStatus(m.status),
             isOwn: m.senderId === currentUserId,
             editedAt: m.editedAt,
             forwardFrom: mapForwardFrom(m),
@@ -831,7 +835,19 @@ function renderMessages(chatId: string): void {
       div.className = `message ${m.isOwn ? 'own' : 'other'}${isUnread ? ' unread' : ''}` + (insideBlock ? '' : (selectedMessageIds.has(m.id) ? ' selected' : ''));
       div.dataset.messageId = m.id;
       div.dataset.isOwn = String(m.isOwn);
-      const status = m.status === 'sending' ? '⏳' : m.status === 'failed' ? '❌' : '';
+      const statusIcon =
+        m.status === 'sending'
+          ? '⏳'
+          : m.status === 'failed'
+            ? '❌'
+            : m.isOwn
+              ? m.status === 'read'
+                ? '<span class="meta-status meta-status-read">✓✓</span>'
+                : m.status === 'delivered'
+                  ? '<span class="meta-status meta-status-delivered">✓✓</span>'
+                  : '<span class="meta-status meta-status-sent">✓</span>'
+              : '';
+      const status = m.status === 'sending' ? '⏳' : m.status === 'failed' ? '❌' : statusIcon;
       const editedLabel = m.editedAt ? '<span class="meta-edited">ред.</span>' : '';
       const origTs = m.forwardFrom?.originalTimestamp;
       const forwardedBy = m.senderUsername ? `Переслал: ${escapeHtml(m.senderUsername)}` : '';
@@ -927,10 +943,11 @@ function openDeleteMessagesModal(): void {
   pendingDeleteMessageIds = ids;
   const list = messagesByChat.get(selectedChatId) ?? [];
   const toDelete = list.filter((m) => ids.includes(m.id));
-  const allOwn = toDelete.length > 0 && toDelete.every((m) => m.isOwn);
+  const hasAnyForeign = toDelete.some((m) => !m.isOwn);
+  const showDeleteForAll = toDelete.length > 0 && !hasAnyForeign;
   modalDeleteMessagesText.textContent = toDelete.length === 1 ? 'Удалить сообщение?' : `Удалить сообщений: ${toDelete.length}?`;
-  modalDeleteMessagesForAllWrap.hidden = !allOwn;
-  if (allOwn) modalDeleteMessagesForAll.checked = false;
+  modalDeleteMessagesForAllWrap.hidden = !showDeleteForAll;
+  if (showDeleteForAll) modalDeleteMessagesForAll.checked = false;
   modalDeleteMessages.hidden = false;
   modalDeleteChat.hidden = true;
   modalForward.hidden = true;

@@ -704,6 +704,17 @@ h1 {
   opacity: 0.85;
 }
 
+.message .meta-status {
+  margin-right: 4px;
+}
+.message .meta-status-sent,
+.message .meta-status-delivered {
+  color: var(--text-muted, rgba(255, 255, 255, 0.6));
+}
+.message .meta-status-read {
+  color: var(--accent);
+}
+
 .send-row {
   display: flex;
   gap: 8px;
