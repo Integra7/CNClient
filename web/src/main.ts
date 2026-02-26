@@ -221,6 +221,7 @@ function setConnectionState(state: 'disconnected' | 'connecting' | 'connected'):
       chatHeader.textContent = chatNames[selectedChatId] ?? shortId(selectedChatId);
       renderMessages(selectedChatId);
       wsClient?.getMessages(selectedChatId);
+      updateSelectionToolbarVisibility();
     } else if (composeToUsername) {
       chatSection.classList.add('chat-open');
       chatPlaceholder.setAttribute('hidden', '');
@@ -228,6 +229,7 @@ function setConnectionState(state: 'disconnected' | 'connecting' | 'connected'):
       chatHeader.textContent = `@${composeToUsername}`;
       renderComposePending();
       messageInput.focus();
+      updateSelectionToolbarVisibility();
     } else {
       chatSection.classList.remove('chat-open');
       chatPlaceholder.removeAttribute('hidden');
@@ -797,11 +799,14 @@ function renderMessages(chatId: string): void {
     const container = useBlock ? document.createElement('div') : null;
     if (container) {
       container.className = 'forwarded-block';
+      const blockSelected = group.some((m) => selectedMessageIds.has(m.id));
+      if (blockSelected) container.classList.add('selected');
       messagesEl.appendChild(container);
     }
     for (const m of group) {
       const div = document.createElement('div');
-      div.className = `message ${m.isOwn ? 'own' : 'other'}${selectedMessageIds.has(m.id) ? ' selected' : ''}`;
+      const insideBlock = !!container;
+      div.className = `message ${m.isOwn ? 'own' : 'other'}` + (insideBlock ? '' : (selectedMessageIds.has(m.id) ? ' selected' : ''));
       div.dataset.messageId = m.id;
       div.dataset.isOwn = String(m.isOwn);
       const status = m.status === 'sending' ? '⏳' : m.status === 'failed' ? '❌' : '';
@@ -815,20 +820,38 @@ function renderMessages(chatId: string): void {
             origTs != null ? `<span class="meta-forward-original">Оригинал: ${formatTime(origTs)}</span>` : '',
           ].filter(Boolean).join('<br/>')
         : '';
+      const showMetaRow = !insideBlock;
       div.innerHTML = `
         ${forwardLines ? `<div class="message-forward-from">${forwardLines}</div>` : ''}
         <span class="content">${escapeHtml(m.content)}</span>
-        <span class="meta-row">
-          <span class="meta">${status} ${formatTime(m.timestamp)}</span>
-          ${editedLabel}
-        </span>
+        ${showMetaRow ? `<span class="meta-row"><span class="meta">${status} ${formatTime(m.timestamp)}</span>${editedLabel}</span>` : ''}
       `;
-      div.addEventListener('click', (e) => {
-        e.stopPropagation();
-        toggleMessageSelection(m.id);
-      });
+      if (insideBlock) {
+        div.addEventListener('click', (e) => e.stopPropagation());
+      } else {
+        div.addEventListener('click', (e) => {
+          e.stopPropagation();
+          toggleMessageSelection(m.id);
+        });
+      }
       if (container) container.appendChild(div);
       else messagesEl.appendChild(div);
+    }
+    if (container) {
+      const blockTs = group[0]?.timestamp;
+      const metaRow = document.createElement('div');
+      metaRow.className = 'forwarded-block-meta';
+      metaRow.textContent = blockTs != null ? formatTime(blockTs) : '';
+      container.appendChild(metaRow);
+      container.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const ids = group.map((m) => m.id);
+        const anySelected = ids.some((id) => selectedMessageIds.has(id));
+        if (anySelected) ids.forEach((id) => selectedMessageIds.delete(id));
+        else ids.forEach((id) => selectedMessageIds.add(id));
+        if (selectedChatId) renderMessages(selectedChatId);
+        updateSelectionToolbarVisibility();
+      });
     }
   }
   updateSelectionToolbarVisibility();
@@ -837,8 +860,13 @@ function renderMessages(chatId: string): void {
 
 function updateSelectionToolbarVisibility(): void {
   const hasSelection = selectedMessageIds.size > 0;
-  messagesSelectionToolbar.hidden = !hasSelection;
-  selectionToolbarZone.hidden = !hasSelection;
+  if (hasSelection) {
+    selectionToolbarZone.removeAttribute('hidden');
+    messagesSelectionToolbar.removeAttribute('hidden');
+  } else {
+    selectionToolbarZone.setAttribute('hidden', '');
+    messagesSelectionToolbar.setAttribute('hidden', '');
+  }
   if (hasSelection && selectedChatId) {
     const list = messagesByChat.get(selectedChatId) ?? [];
     const singleId = selectedMessageIds.size === 1 ? [...selectedMessageIds][0] : null;
@@ -1076,6 +1104,7 @@ function showApp(token: string): void {
     navigator.serviceWorker.register(`${import.meta.env.BASE_URL}sw.js`, { scope: import.meta.env.BASE_URL }).catch(() => {});
   }
   wsClient.connect(token);
+  updateSelectionToolbarVisibility();
 }
 
 function logout(): void {

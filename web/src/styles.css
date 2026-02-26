@@ -965,6 +965,24 @@ h1 {
   align-self: flex-start;
 }
 
+.forwarded-block .message .meta-row {
+  margin-top: 4px;
+}
+
+.forwarded-block-meta {
+  align-self: flex-end;
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 4px;
+  margin-left: auto;
+}
+
+.forwarded-block.selected {
+  outline-color: var(--accent);
+  outline-width: 2px;
+  background: rgba(167, 139, 250, 0.12);
+}
+
 @media (max-width: 768px) {
   body {
     font-size: 15px;
