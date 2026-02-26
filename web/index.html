@@ -75,15 +75,17 @@
               <button id="chat-back-btn" type="button" class="chat-back-btn" aria-label="К списку чатов">← Чаты</button>
               <div id="chat-header"></div>
             </div>
-            <div id="selection-toolbar-zone" class="selection-toolbar-zone" hidden>
-              <div id="messages-selection-toolbar" class="selection-toolbar" hidden>
-                <button type="button" id="selection-delete-btn">Удалить</button>
-                <button type="button" id="selection-forward-btn">Переслать</button>
-                <button type="button" id="selection-edit-btn" class="selection-edit-btn">Редактировать</button>
-                <button type="button" id="selection-close-btn" class="selection-close-btn" aria-label="Снять выделение">×</button>
+            <div class="chat-messages-wrap">
+              <div id="selection-toolbar-zone" class="selection-toolbar-zone">
+                <div id="messages-selection-toolbar" class="selection-toolbar">
+                  <button type="button" id="selection-delete-btn">Удалить</button>
+                  <button type="button" id="selection-forward-btn">Переслать</button>
+                  <button type="button" id="selection-edit-btn" class="selection-edit-btn"><span class="selection-edit-label-full">Редактировать</span><span class="selection-edit-label-short">Ред.</span></button>
+                  <button type="button" id="selection-close-btn" class="selection-close-btn" aria-label="Снять выделение">×</button>
+                </div>
               </div>
+              <div id="messages"></div>
             </div>
-            <div id="messages"></div>
             <div class="send-row">
               <input id="message-input" type="text" placeholder="Сообщение..." />
               <button id="send" type="button">Отправить</button>

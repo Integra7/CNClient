@@ -115,7 +115,6 @@ const chatHeader = document.getElementById('chat-header') as HTMLElement;
 const chatBackBtn = document.getElementById('chat-back-btn') as HTMLButtonElement;
 const messagesEl = document.getElementById('messages') as HTMLElement;
 const selectionToolbarZone = document.getElementById('selection-toolbar-zone') as HTMLElement;
-const messagesSelectionToolbar = document.getElementById('messages-selection-toolbar') as HTMLElement;
 const selectionDeleteBtn = document.getElementById('selection-delete-btn') as HTMLButtonElement;
 const selectionForwardBtn = document.getElementById('selection-forward-btn') as HTMLButtonElement;
 const selectionEditBtn = document.getElementById('selection-edit-btn') as HTMLButtonElement;
@@ -220,7 +219,9 @@ function setConnectionState(state: 'disconnected' | 'connecting' | 'connected'):
       chatPanel.removeAttribute('hidden');
       chatHeader.textContent = chatNames[selectedChatId] ?? shortId(selectedChatId);
       renderMessages(selectedChatId);
+      scrollMessagesToBottom();
       wsClient?.getMessages(selectedChatId);
+      updateSelectionToolbarVisibility();
     } else if (composeToUsername) {
       chatSection.classList.add('chat-open');
       chatPlaceholder.setAttribute('hidden', '');
@@ -228,6 +229,7 @@ function setConnectionState(state: 'disconnected' | 'connecting' | 'connected'):
       chatHeader.textContent = `@${composeToUsername}`;
       renderComposePending();
       messageInput.focus();
+      updateSelectionToolbarVisibility();
     } else {
       chatSection.classList.remove('chat-open');
       chatPlaceholder.removeAttribute('hidden');
@@ -310,6 +312,7 @@ function selectChat(chatId: string): void {
   renderChatList();
   updateBackButtonUnread();
   renderMessages(chatId);
+  scrollMessagesToBottom();
   wsClient?.getMessages(chatId);
   messageInput.focus();
 }
@@ -523,11 +526,15 @@ function handleServerMessage(msg: ServerMessage): void {
       try {
         const data = JSON.parse(msg.content) as { messages?: MessageFromServer[] };
         const list = messagesByChat.get(msg.chatId) ?? [];
-        const existingIds = new Set(list.map((m) => m.id));
+        const serverStatus = (s: string): DisplayMessage['status'] =>
+          (s === 'read' || s === 'delivered' || s === 'sent' ? s : 'sent') as DisplayMessage['status'];
         for (const m of data.messages ?? []) {
           if (m.isDeleted) continue;
-          if (existingIds.has(m.id)) continue;
-          existingIds.add(m.id);
+          const existing = list.find((x) => x.id === m.id);
+          if (existing) {
+            existing.status = serverStatus(m.status);
+            continue;
+          }
           const sm = m as MessageFromServer & { senderUsername?: string | null };
           list.push({
             id: m.id,
@@ -538,7 +545,7 @@ function handleServerMessage(msg: ServerMessage): void {
             content: m.content,
             sequenceNumber: m.sequenceNumber,
             timestamp: m.timestamp ?? m.createdAt ?? m.updatedAt ?? 0,
-            status: 'sent',
+            status: serverStatus(m.status),
             isOwn: m.senderId === currentUserId,
             editedAt: m.editedAt,
             forwardFrom: mapForwardFrom(m),
@@ -630,6 +637,7 @@ function handleServerMessage(msg: ServerMessage): void {
         );
         if (!existing) {
           const ext = msg as ServerMessage & {
+            status?: string;
             editedAt?: number;
             isForwarded?: boolean;
             forwardFromSenderId?: string | null;
@@ -646,7 +654,7 @@ function handleServerMessage(msg: ServerMessage): void {
             content: msg.content,
             sequenceNumber: msg.sequenceNumber,
             timestamp: msg.timestamp ?? Date.now(),
-            status: 'sent',
+            status: (ext.status === 'read' || ext.status === 'delivered' || ext.status === 'sent' ? ext.status : 'sent') as DisplayMessage['status'],
             isOwn: msg.senderId === currentUserId,
             editedAt: ext.editedAt,
             forwardFrom: mapForwardFrom(ext),
@@ -736,6 +744,22 @@ function handleServerMessage(msg: ServerMessage): void {
       }
       break;
     }
+    case 'messages_read': {
+      if (!msg.chatId || !msg.content) break;
+      try {
+        const data = typeof msg.content === 'string' ? JSON.parse(msg.content) : msg.content as { messageIds?: string[]; readerId?: string };
+        const cid = msg.chatId;
+        const list = messagesByChat.get(cid) ?? [];
+        for (const mid of data.messageIds ?? []) {
+          const item = list.find((m) => m.id === mid);
+          if (item && item.isOwn) item.status = 'read';
+        }
+        persistMessages();
+        if (selectedChatId === cid) renderMessages(cid);
+        renderChatList();
+      } catch {}
+      break;
+    }
     default:
       break;
   }
@@ -791,20 +815,37 @@ function renderMessages(chatId: string): void {
   }
   if (run.length > 0) groups.push(run);
 
+  const readThreshold = lastReadByChat[chatId] ?? 0;
   for (const group of groups) {
     const first = group[0];
     const useBlock = group.length >= 1 && (first?.forwardFrom != null);
     const container = useBlock ? document.createElement('div') : null;
     if (container) {
       container.className = 'forwarded-block';
+      const blockSelected = group.some((m) => selectedMessageIds.has(m.id));
+      if (blockSelected) container.classList.add('selected');
+      const blockHasUnread = group.some((m) => !m.isOwn && m.timestamp > readThreshold);
+      if (blockHasUnread) container.classList.add('forwarded-block-unread');
       messagesEl.appendChild(container);
     }
     for (const m of group) {
+      const isUnread = !m.isOwn && m.timestamp > readThreshold;
       const div = document.createElement('div');
-      div.className = `message ${m.isOwn ? 'own' : 'other'}${selectedMessageIds.has(m.id) ? ' selected' : ''}`;
+      const insideBlock = !!container;
+      div.className = `message ${m.isOwn ? 'own' : 'other'}${isUnread ? ' unread' : ''}` + (insideBlock ? '' : (selectedMessageIds.has(m.id) ? ' selected' : ''));
       div.dataset.messageId = m.id;
       div.dataset.isOwn = String(m.isOwn);
-      const status = m.status === 'sending' ? '⏳' : m.status === 'failed' ? '❌' : '';
+      const statusIcon =
+        m.status === 'sending'
+          ? '⏳'
+          : m.status === 'failed'
+            ? '❌'
+            : m.isOwn
+              ? (m.status === 'read' || m.status === 'delivered')
+                ? '<span class="meta-status meta-status-delivered">✓✓</span>'
+                : '<span class="meta-status meta-status-sent">✓</span>'
+              : '';
+      const status = m.status === 'sending' ? '⏳' : m.status === 'failed' ? '❌' : statusIcon;
       const editedLabel = m.editedAt ? '<span class="meta-edited">ред.</span>' : '';
       const origTs = m.forwardFrom?.originalTimestamp;
       const forwardedBy = m.senderUsername ? `Переслал: ${escapeHtml(m.senderUsername)}` : '';
@@ -815,30 +856,52 @@ function renderMessages(chatId: string): void {
             origTs != null ? `<span class="meta-forward-original">Оригинал: ${formatTime(origTs)}</span>` : '',
           ].filter(Boolean).join('<br/>')
         : '';
+      const showMetaRow = !insideBlock;
       div.innerHTML = `
         ${forwardLines ? `<div class="message-forward-from">${forwardLines}</div>` : ''}
         <span class="content">${escapeHtml(m.content)}</span>
-        <span class="meta-row">
-          <span class="meta">${status} ${formatTime(m.timestamp)}</span>
-          ${editedLabel}
-        </span>
+        ${showMetaRow ? `<span class="meta-row"><span class="meta">${status} ${formatTime(m.timestamp)}</span>${editedLabel}</span>` : ''}
       `;
-      div.addEventListener('click', (e) => {
-        e.stopPropagation();
-        toggleMessageSelection(m.id);
-      });
+      if (insideBlock) {
+        div.addEventListener('click', (e) => e.stopPropagation());
+      } else {
+        div.addEventListener('click', (e) => {
+          e.stopPropagation();
+          toggleMessageSelection(m.id);
+        });
+      }
       if (container) container.appendChild(div);
       else messagesEl.appendChild(div);
     }
+    if (container) {
+      const blockTs = group[0]?.timestamp;
+      const metaRow = document.createElement('div');
+      metaRow.className = 'forwarded-block-meta';
+      metaRow.textContent = blockTs != null ? formatTime(blockTs) : '';
+      container.appendChild(metaRow);
+      container.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const ids = group.map((m) => m.id);
+        const anySelected = ids.some((id) => selectedMessageIds.has(id));
+        if (anySelected) ids.forEach((id) => selectedMessageIds.delete(id));
+        else ids.forEach((id) => selectedMessageIds.add(id));
+        if (selectedChatId) renderMessages(selectedChatId);
+        updateSelectionToolbarVisibility();
+      });
+    }
   }
   updateSelectionToolbarVisibility();
-  scrollMessagesToBottom();
 }
 
 function updateSelectionToolbarVisibility(): void {
   const hasSelection = selectedMessageIds.size > 0;
-  messagesSelectionToolbar.hidden = !hasSelection;
-  selectionToolbarZone.hidden = !hasSelection;
+  if (hasSelection) {
+    selectionToolbarZone.classList.add('selection-toolbar-zone-visible');
+  } else {
+    selectionToolbarZone.classList.remove('selection-toolbar-zone-visible');
+    selectionEditBtn.style.visibility = 'hidden';
+    selectionEditBtn.disabled = true;
+  }
   if (hasSelection && selectedChatId) {
     const list = messagesByChat.get(selectedChatId) ?? [];
     const singleId = selectedMessageIds.size === 1 ? [...selectedMessageIds][0] : null;
@@ -878,10 +941,11 @@ function openDeleteMessagesModal(): void {
   pendingDeleteMessageIds = ids;
   const list = messagesByChat.get(selectedChatId) ?? [];
   const toDelete = list.filter((m) => ids.includes(m.id));
-  const hasOwn = toDelete.some((m) => m.isOwn);
+  const hasAnyForeign = toDelete.some((m) => !m.isOwn);
+  const showDeleteForAll = toDelete.length > 0 && !hasAnyForeign;
   modalDeleteMessagesText.textContent = toDelete.length === 1 ? 'Удалить сообщение?' : `Удалить сообщений: ${toDelete.length}?`;
-  modalDeleteMessagesForAllWrap.hidden = !hasOwn;
-  if (hasOwn) modalDeleteMessagesForAll.checked = false;
+  modalDeleteMessagesForAllWrap.hidden = !showDeleteForAll;
+  if (showDeleteForAll) modalDeleteMessagesForAll.checked = false;
   modalDeleteMessages.hidden = false;
   modalDeleteChat.hidden = true;
   modalForward.hidden = true;
@@ -1076,6 +1140,7 @@ function showApp(token: string): void {
     navigator.serviceWorker.register(`${import.meta.env.BASE_URL}sw.js`, { scope: import.meta.env.BASE_URL }).catch(() => {});
   }
   wsClient.connect(token);
+  updateSelectionToolbarVisibility();
 }
 
 function logout(): void {
