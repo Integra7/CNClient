@@ -719,19 +719,10 @@ h1 {
   color: var(--bg);
   opacity: 0.9;
 }
-.message.own .meta-status-read {
-  color: var(--bg);
-  background: rgba(255, 255, 255, 0.35);
-  padding: 1px 5px;
-  border-radius: 6px;
-}
 /* Чужие сообщения (если вдруг показываем) */
 .message.other .meta-status-sent,
 .message.other .meta-status-delivered {
   color: var(--text-muted);
-}
-.message.other .meta-status-read {
-  color: var(--accent);
 }
 
 .send-row {

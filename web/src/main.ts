@@ -841,11 +841,9 @@ function renderMessages(chatId: string): void {
           : m.status === 'failed'
             ? '❌'
             : m.isOwn
-              ? m.status === 'read'
-                ? '<span class="meta-status meta-status-read">✓✓</span>'
-                : m.status === 'delivered'
-                  ? '<span class="meta-status meta-status-delivered">✓✓</span>'
-                  : '<span class="meta-status meta-status-sent">✓</span>'
+              ? (m.status === 'read' || m.status === 'delivered')
+                ? '<span class="meta-status meta-status-delivered">✓✓</span>'
+                : '<span class="meta-status meta-status-sent">✓</span>'
               : '';
       const status = m.status === 'sending' ? '⏳' : m.status === 'failed' ? '❌' : statusIcon;
       const editedLabel = m.editedAt ? '<span class="meta-edited">ред.</span>' : '';
