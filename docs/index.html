@@ -8,8 +8,8 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Unbounded:wght@400;500;600&display=swap" rel="stylesheet" />
-    <script type="module" crossorigin src="/CNClient/assets/index-_GziD8Su.js"></script>
-    <link rel="stylesheet" crossorigin href="/CNClient/assets/index-fwie_vT0.css">
+    <script type="module" crossorigin src="/CNClient/assets/index-CYJ7Efs9.js"></script>
+    <link rel="stylesheet" crossorigin href="/CNClient/assets/index-DIl9NqNl.css">
   </head>
   <body>
     <div id="login-screen" class="login-screen">
@@ -77,15 +77,17 @@
               <button id="chat-back-btn" type="button" class="chat-back-btn" aria-label="К списку чатов">← Чаты</button>
               <div id="chat-header"></div>
             </div>
-            <div id="selection-toolbar-zone" class="selection-toolbar-zone">
-              <div id="messages-selection-toolbar" class="selection-toolbar" hidden>
-                <button type="button" id="selection-delete-btn">Удалить</button>
-                <button type="button" id="selection-forward-btn">Переслать</button>
-                <button type="button" id="selection-edit-btn" class="selection-edit-btn">Редактировать</button>
-                <button type="button" id="selection-close-btn" class="selection-close-btn" aria-label="Снять выделение">×</button>
+            <div class="chat-messages-wrap">
+              <div id="selection-toolbar-zone" class="selection-toolbar-zone">
+                <div id="messages-selection-toolbar" class="selection-toolbar">
+                  <button type="button" id="selection-delete-btn">Удалить</button>
+                  <button type="button" id="selection-forward-btn">Переслать</button>
+                  <button type="button" id="selection-edit-btn" class="selection-edit-btn">Редактировать</button>
+                  <button type="button" id="selection-close-btn" class="selection-close-btn" aria-label="Снять выделение">×</button>
+                </div>
               </div>
+              <div id="messages"></div>
             </div>
-            <div id="messages"></div>
             <div class="send-row">
               <input id="message-input" type="text" placeholder="Сообщение..." />
               <button id="send" type="button">Отправить</button>
