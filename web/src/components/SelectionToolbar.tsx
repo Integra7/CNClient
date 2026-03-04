@@ -11,11 +11,14 @@ export function SelectionToolbar() {
   const singleMsg = singleId ? list.find((m) => m.id === singleId) : null;
   const showEdit =
     state.selectedMessageIds.length === 1 && singleMsg?.isOwn === true;
-  /** Ответить можно только на чужие сообщения */
+  /** Ответить можно только на чужие; если выбрано хотя бы одно своё — кнопка неактивна */
+  const hasOwnInSelection = state.selectedMessageIds.some(
+    (id) => list.find((m) => m.id === id)?.isOwn
+  );
   const selectedOthersIds = state.selectedMessageIds.filter(
     (id) => !list.find((m) => m.id === id)?.isOwn
   );
-  const canReply = selectedOthersIds.length > 0;
+  const canReply = selectedOthersIds.length > 0 && !hasOwnInSelection;
 
   if (!hasSelection) {
     return (
