@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useMemo, useCallback } from 'react';
 import { useApp } from '../context/AppContext';
 import type { DisplayMessage, AttachmentResponse } from '../types';
 import { formatTime, escapeHtml, formatFileSize, formatDuration } from '../utils/format';
+import { buildImageDisplayUrl, getCloudinaryCloudName } from '../utils/upload';
 
 interface MessageListProps {
   chatId: string;
@@ -188,7 +189,11 @@ const REPLY_PREVIEW_MAX_LEN = 50;
 
 function AttachmentDisplay({ attachment }: { attachment: AttachmentResponse }) {
   if (attachment.resourceType === 'image') {
-    const src = attachment.thumbnailUrl || attachment.url;
+    const cloudName = getCloudinaryCloudName(attachment.url);
+    const src =
+      cloudName && attachment.publicId
+        ? buildImageDisplayUrl(cloudName, attachment.publicId)
+        : attachment.thumbnailUrl || attachment.url;
     return (
       <div className="attachment attachment-image">
         <a href={attachment.url} target="_blank" rel="noopener noreferrer" className="attachment-image-link">
