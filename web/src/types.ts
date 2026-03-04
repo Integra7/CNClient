@@ -10,6 +10,8 @@ export interface AttachmentRequest {
   width?: number;
   height?: number;
   duration?: number;
+  /** true для голосовых сообщений (аудио через Cloudinary video API) */
+  isVoiceMessage?: boolean;
 }
 
 /** Вложение из ответа сервера */
@@ -26,6 +28,8 @@ export interface AttachmentResponse {
   height?: number;
   duration?: number;
   createdAt: number;
+  /** true для голосовых сообщений */
+  isVoiceMessage?: boolean;
 }
 
 /** Контент сообщения при отправке с вложениями */

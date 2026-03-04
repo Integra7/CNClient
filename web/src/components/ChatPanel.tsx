@@ -1,10 +1,11 @@
 import { useEffect, useRef, useCallback, useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { shortId } from '../utils/format';
-import type { ReplyToMessage, AttachmentRequest, AttachmentResponse } from '../types';
+import type { ReplyToMessage, AttachmentRequest, AttachmentResponse, DisplayMessage } from '../types';
 import { MessageList } from './MessageList';
 import { SelectionToolbar } from './SelectionToolbar';
-import { validateFile, uploadFiles } from '../utils/upload';
+import { formatDuration } from '../utils/format';
+import { validateFile, uploadFiles, uploadVoiceToCloudinary, validateVoiceMessage } from '../utils/upload';
 
 interface ChatPanelProps {
   chatIds: string[];
@@ -19,10 +20,22 @@ export function ChatPanel({ chatIds }: ChatPanelProps) {
   const [uploadingFiles, setUploadingFiles] = useState<{ file: File; previewUrl: string | null; progress: number }[]>([]);
   const [uploadError, setUploadError] = useState<string | null>(null);
 
+  /** Голосовое: idle | recording | recorded | uploading */
+  const [voiceState, setVoiceState] = useState<'idle' | 'recording' | 'recorded' | 'uploading'>('idle');
+  const [recordedBlob, setRecordedBlob] = useState<Blob | null>(null);
+  const [recordDurationSec, setRecordDurationSec] = useState(0);
+  const [recordElapsedSec, setRecordElapsedSec] = useState(0);
+  const [voiceUploadProgress, setVoiceUploadProgress] = useState(0);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const voiceStreamRef = useRef<MediaStream | null>(null);
+  const recordTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const recordElapsedRef = useRef(0);
+
   const selectedChatId = state.selectedChatId;
   const composeToUsername = state.composeToUsername;
   /** Кнопка прикрепления показывается всегда в панели чата; загрузка возможна только при выбранном чате */
   const canAttach = !!selectedChatId && !composeToUsername;
+  const canVoice = !!selectedChatId && !composeToUsername;
 
   useEffect(() => {
     if (state.connectionState === 'connected' && selectedChatId) {
@@ -33,6 +46,14 @@ export function ChatPanel({ chatIds }: ChatPanelProps) {
   useEffect(() => {
     messageInputRef.current?.focus();
   }, [selectedChatId, composeToUsername, state.replyingToMessageIds.length]);
+
+  useEffect(() => {
+    return () => {
+      if (recordTimerRef.current) clearInterval(recordTimerRef.current);
+      voiceStreamRef.current?.getTracks().forEach((t) => t.stop());
+      mediaRecorderRef.current?.state === 'recording' && mediaRecorderRef.current?.stop();
+    };
+  }, []);
 
   const backToChatList = useCallback(() => {
     dispatch({ type: 'BACK_TO_LIST' });
@@ -99,6 +120,133 @@ export function ChatPanel({ chatIds }: ChatPanelProps) {
   const removePendingAttachment = useCallback((index: number) => {
     setPendingAttachments((prev) => prev.filter((_, i) => i !== index));
   }, []);
+
+  const clearRecordTimer = useCallback(() => {
+    if (recordTimerRef.current) {
+      clearInterval(recordTimerRef.current);
+      recordTimerRef.current = null;
+    }
+  }, []);
+
+  const startVoiceRecording = useCallback(async () => {
+    if (!canVoice || voiceState !== 'idle') return;
+    setUploadError(null);
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      voiceStreamRef.current = stream;
+      const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus') ? 'audio/webm;codecs=opus' : 'audio/webm';
+      const recorder = new MediaRecorder(stream, { mimeType });
+      mediaRecorderRef.current = recorder;
+      const chunks: Blob[] = [];
+      recorder.ondataavailable = (e) => {
+        if (e.data.size > 0) chunks.push(e.data);
+      };
+      recorder.onstop = () => {
+        voiceStreamRef.current?.getTracks().forEach((t) => t.stop());
+        voiceStreamRef.current = null;
+        clearRecordTimer();
+        const blob = new Blob(chunks, { type: mimeType });
+        setRecordedBlob(blob);
+        setRecordDurationSec(recordElapsedRef.current);
+        setVoiceState('recorded');
+      };
+      recorder.onerror = () => {
+        setUploadError('Ошибка записи');
+        setVoiceState('idle');
+      };
+      recorder.start();
+      recordElapsedRef.current = 0;
+      setRecordElapsedSec(0);
+      setVoiceState('recording');
+      recordTimerRef.current = setInterval(() => {
+        recordElapsedRef.current += 1;
+        setRecordElapsedSec(recordElapsedRef.current);
+      }, 1000);
+    } catch (err) {
+      setUploadError(err instanceof Error ? err.message : String(err));
+    }
+  }, [canVoice, voiceState, clearRecordTimer]);
+
+  const stopVoiceRecording = useCallback(() => {
+    if (mediaRecorderRef.current?.state === 'recording') {
+      mediaRecorderRef.current.stop();
+      mediaRecorderRef.current = null;
+    }
+  }, []);
+
+  const cancelVoiceMessage = useCallback(() => {
+    if (mediaRecorderRef.current?.state === 'recording') {
+      mediaRecorderRef.current.stop();
+      mediaRecorderRef.current = null;
+    }
+    voiceStreamRef.current?.getTracks().forEach((t) => t.stop());
+    voiceStreamRef.current = null;
+    clearRecordTimer();
+    recordElapsedRef.current = 0;
+    setRecordedBlob(null);
+    setRecordDurationSec(0);
+    setRecordElapsedSec(0);
+    setVoiceState('idle');
+  }, [clearRecordTimer]);
+
+  const sendVoiceMessage = useCallback(async () => {
+    if (!recordedBlob || !selectedChatId || !wsClientRef.current?.connected || voiceState === 'uploading') return;
+    const validation = validateVoiceMessage(recordedBlob, recordDurationSec);
+    if (!validation.valid) {
+      setUploadError(validation.error ?? 'Ошибка валидации');
+      return;
+    }
+    setUploadError(null);
+    setVoiceState('uploading');
+    setVoiceUploadProgress(0);
+    const clientMessageId = crypto.randomUUID();
+    const list = state.messagesByChat[selectedChatId] ?? [];
+    try {
+      const attachment = await uploadVoiceToCloudinary(recordedBlob, 'voice.webm', (p) => setVoiceUploadProgress(p));
+      setRecordedBlob(null);
+      setRecordDurationSec(0);
+      setVoiceState('idle');
+
+      const newMsg: DisplayMessage = {
+        id: clientMessageId,
+        clientMessageId,
+        chatId: selectedChatId,
+        senderId: state.currentUserId,
+        content: '',
+        timestamp: Date.now(),
+        status: 'sending',
+        isOwn: true,
+        attachments: [
+          {
+            id: '',
+            ...attachment,
+            createdAt: Date.now(),
+            isVoiceMessage: true,
+          } as AttachmentResponse,
+        ],
+      };
+      dispatch({
+        type: 'MERGE_MESSAGES',
+        payload: {
+          chatId: selectedChatId,
+          messages: [...list, newMsg].sort((a, b) => a.timestamp - b.timestamp),
+        },
+      });
+      wsClientRef.current.sendMessageWithAttachments(selectedChatId, undefined, [attachment], clientMessageId);
+    } catch (err) {
+      setUploadError(err instanceof Error ? err.message : String(err));
+      setVoiceState('recorded');
+    }
+  }, [
+    recordedBlob,
+    recordDurationSec,
+    selectedChatId,
+    state.messagesByChat,
+    state.currentUserId,
+    voiceState,
+    dispatch,
+    wsClientRef,
+  ]);
 
   const sendMessage = useCallback(() => {
     const input = messageInputRef.current;
@@ -315,6 +463,8 @@ export function ChatPanel({ chatIds }: ChatPanelProps) {
             <span key={a.publicId} className="pending-attachment-chip">
               {a.resourceType === 'image' && (a.thumbnailUrl || a.url) ? (
                 <img src={a.thumbnailUrl || a.url} alt="" className="pending-attachment-thumb" />
+              ) : a.isVoiceMessage ? (
+                <span className="pending-attachment-icon">🎤</span>
               ) : (
                 <span className="pending-attachment-icon">📎</span>
               )}
@@ -334,6 +484,34 @@ export function ChatPanel({ chatIds }: ChatPanelProps) {
           ))}
         </div>
       ) : null}
+      {voiceState === 'recording' ? (
+        <div className="voice-recording-strip">
+          <span className="voice-recording-dot" aria-hidden />
+          <span className="voice-recording-timer">{formatDuration(recordElapsedSec)}</span>
+          <button type="button" className="voice-recording-stop" onClick={stopVoiceRecording}>
+            Стоп
+          </button>
+        </div>
+      ) : null}
+      {voiceState === 'recorded' && recordedBlob ? (
+        <div className="voice-recorded-strip">
+          <span className="voice-recorded-label">Голосовое {formatDuration(recordDurationSec)}</span>
+          <button type="button" className="voice-send-btn" onClick={sendVoiceMessage}>
+            Отправить
+          </button>
+          <button type="button" className="voice-cancel-btn" onClick={cancelVoiceMessage}>
+            Удалить
+          </button>
+        </div>
+      ) : null}
+      {voiceState === 'uploading' ? (
+        <div className="voice-uploading-strip">
+          <span>Загрузка голосового… {voiceUploadProgress}%</span>
+          <div className="voice-upload-progress">
+            <div className="voice-upload-progress-fill" style={{ width: `${voiceUploadProgress}%` }} />
+          </div>
+        </div>
+      ) : null}
       <div className="send-row">
         <input
           ref={fileInputRef}
@@ -346,11 +524,22 @@ export function ChatPanel({ chatIds }: ChatPanelProps) {
           aria-hidden
           disabled={!canAttach || uploadingFiles.length > 0}
         />
-        {canAttach && uploadingFiles.length === 0 ? (
+        {canVoice && voiceState === 'idle' ? (
+          <button
+            type="button"
+            className="attach-btn voice-btn"
+            aria-label="Записать голосовое"
+            title="Голосовое сообщение"
+            onClick={startVoiceRecording}
+          >
+            🎤
+          </button>
+        ) : null}
+        {canAttach && uploadingFiles.length === 0 && voiceState === 'idle' ? (
           <label htmlFor="attach-file-input" className="attach-btn" title="Прикрепить файл (фото, видео, документ)">
             📎
           </label>
-        ) : (
+        ) : voiceState === 'idle' ? (
           <button
             type="button"
             className="attach-btn"
@@ -361,7 +550,7 @@ export function ChatPanel({ chatIds }: ChatPanelProps) {
           >
             📎
           </button>
-        )}
+        ) : null}
         <input
           ref={messageInputRef}
           id="message-input"

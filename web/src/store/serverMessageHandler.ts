@@ -23,6 +23,7 @@ function parseAttachments(attachmentsJson: string | null | undefined): Attachmen
         height: o.height != null ? Number(o.height) : undefined,
         duration: o.duration != null ? Number(o.duration) : undefined,
         createdAt: Number(o.createdAt ?? 0),
+        isVoiceMessage: Boolean(o.isVoiceMessage),
       };
     });
   } catch {
@@ -312,10 +313,16 @@ export function createServerMessageHandler(
           attachments?: string | null;
         };
         const list = state.messagesByChat[msg.chatId] ?? [];
-        const existing = list.some(
-          (m) => m.id === msg.id || m.clientMessageId === msg.clientMessageId
-        );
-        if (existing) break;
+        const existingById = list.some((m) => m.id === msg.id);
+        if (existingById) break;
+        const byClientId = msg.clientMessageId ? list.find((m) => m.clientMessageId === msg.clientMessageId) : null;
+        if (byClientId) {
+          dispatch({ type: 'REMOVE_PENDING', payload: msg.clientMessageId! });
+        }
+        const nextList = byClientId
+          ? list.filter((m) => m.clientMessageId !== msg.clientMessageId)
+          : list;
+        const baseList = nextList;
 
         if (state.composeToUsername && !state.chatNames[msg.chatId]) {
           dispatch({
@@ -362,7 +369,7 @@ export function createServerMessageHandler(
 
         dispatch({
           type: 'MERGE_MESSAGES',
-          payload: { chatId: msg.chatId, messages: [...list, newMsg].sort((a, b) => a.timestamp - b.timestamp) },
+          payload: { chatId: msg.chatId, messages: [...baseList, newMsg].sort((a, b) => a.timestamp - b.timestamp) },
         });
         dispatch({
           type: 'SET_CHAT_LAST_MESSAGE_TIME',

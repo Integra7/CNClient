@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useMemo, useCallback } from 'react';
+import React, { useEffect, useRef, useMemo, useCallback, useState } from 'react';
 import { useApp } from '../context/AppContext';
 import type { DisplayMessage, AttachmentResponse } from '../types';
 import { formatTime, escapeHtml, formatFileSize, formatDuration } from '../utils/format';
@@ -98,6 +98,7 @@ export function MessageList({ chatId, isCompose }: MessageListProps) {
   }, [combined]);
 
   const readThreshold = chatId ? (state.lastReadByChat[chatId] ?? 0) : 0;
+  const [playingVoiceUrl, setPlayingVoiceUrl] = useState<string | null>(null);
   const selectedSet = useMemo(
     () => new Set(state.selectedMessageIds),
     [state.selectedMessageIds]
@@ -167,6 +168,8 @@ export function MessageList({ chatId, isCompose }: MessageListProps) {
                   messagesInChat={list}
                   chatId={chatId}
                   chatNames={state.chatNames}
+                  playingVoiceUrl={playingVoiceUrl}
+                  setPlayingVoiceUrl={setPlayingVoiceUrl}
                 />
               ))}
               <div className="forwarded-block-meta">
@@ -192,6 +195,8 @@ export function MessageList({ chatId, isCompose }: MessageListProps) {
                 messagesInChat={list}
                 chatId={chatId}
                 chatNames={state.chatNames}
+                playingVoiceUrl={playingVoiceUrl}
+                setPlayingVoiceUrl={setPlayingVoiceUrl}
               />
             ))}
           </React.Fragment>
@@ -203,7 +208,153 @@ export function MessageList({ chatId, isCompose }: MessageListProps) {
 
 const REPLY_PREVIEW_MAX_LEN = 50;
 
-function AttachmentDisplay({ attachment }: { attachment: AttachmentResponse }) {
+function formatVoiceTime(seconds: number): string {
+  const m = Math.floor(seconds / 60);
+  const s = Math.floor(seconds % 60);
+  return `${m}:${s.toString().padStart(2, '0')}`;
+}
+
+const WAVE_BAR_COUNT = 24;
+
+function VoiceMessagePlayer({
+  attachment,
+  playingVoiceUrl,
+  setPlayingVoiceUrl,
+}: {
+  attachment: AttachmentResponse;
+  playingVoiceUrl: string | null;
+  setPlayingVoiceUrl: (url: string | null) => void;
+}) {
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [duration, setDuration] = useState(attachment.duration ?? 0);
+
+  useEffect(() => {
+    const audio = new Audio(attachment.url);
+    audioRef.current = audio;
+
+    const onLoadedMetadata = () => setDuration(audio.duration);
+    const onTimeUpdate = () => setCurrentTime(audio.currentTime);
+    const onEnded = () => {
+      setIsPlaying(false);
+      setCurrentTime(0);
+      setPlayingVoiceUrl(null);
+    };
+
+    audio.addEventListener('loadedmetadata', onLoadedMetadata);
+    audio.addEventListener('timeupdate', onTimeUpdate);
+    audio.addEventListener('ended', onEnded);
+    if (attachment.duration != null) setDuration(attachment.duration);
+
+    return () => {
+      audio.pause();
+      audio.src = '';
+      audioRef.current = null;
+    };
+  }, [attachment.url, attachment.duration, setPlayingVoiceUrl]);
+
+  useEffect(() => {
+    if (playingVoiceUrl != null && playingVoiceUrl !== attachment.url && audioRef.current) {
+      audioRef.current.pause();
+      setIsPlaying(false);
+    }
+  }, [playingVoiceUrl, attachment.url]);
+
+  const togglePlay = useCallback(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
+    if (isPlaying) {
+      audio.pause();
+      setIsPlaying(false);
+      setPlayingVoiceUrl(null);
+    } else {
+      setPlayingVoiceUrl(attachment.url);
+      audio.play().catch(() => {
+        setIsPlaying(false);
+        setPlayingVoiceUrl(null);
+      });
+      setIsPlaying(true);
+    }
+  }, [isPlaying, attachment.url, setPlayingVoiceUrl]);
+
+  const handleProgressClick = useCallback(
+    (e: React.MouseEvent<HTMLDivElement>) => {
+      const audio = audioRef.current;
+      if (!audio || duration <= 0) return;
+      const rect = e.currentTarget.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const pct = Math.max(0, Math.min(1, x / rect.width));
+      audio.currentTime = pct * duration;
+      setCurrentTime(audio.currentTime);
+    },
+    [duration]
+  );
+
+  const progress = duration > 0 ? (currentTime / duration) * 100 : 0;
+
+  return (
+    <div className="attachment attachment-voice">
+      <button
+        type="button"
+        className="voice-play-btn"
+        onClick={togglePlay}
+        aria-label={isPlaying ? 'Пауза' : 'Воспроизвести'}
+      >
+        {isPlaying ? '⏸' : '▶'}
+      </button>
+      <div className="voice-waveform-wrap">
+        <div className="voice-waveform" aria-hidden>
+          {Array.from({ length: WAVE_BAR_COUNT }).map((_, i) => (
+            <div
+              key={i}
+              className={`voice-wave-bar ${isPlaying ? 'voice-wave-bar-playing' : ''}`}
+              style={{
+                height: `${20 + Math.sin((i / WAVE_BAR_COUNT) * Math.PI * 2) * 35}%`,
+                animationDelay: `${i * 0.05}s`,
+              }}
+            />
+          ))}
+        </div>
+        <div
+          className="voice-progress-track"
+          role="progressbar"
+          aria-valuenow={currentTime}
+          aria-valuemin={0}
+          aria-valuemax={duration}
+          onClick={handleProgressClick}
+        >
+          <div className="voice-progress-fill" style={{ width: `${progress}%` }} />
+        </div>
+      </div>
+      <div className="voice-info">
+        <span className="voice-time">
+          {formatVoiceTime(currentTime)} / {formatVoiceTime(duration)}
+        </span>
+        <span className="voice-size">{formatFileSize(attachment.fileSize)}</span>
+      </div>
+    </div>
+  );
+}
+
+function AttachmentDisplay({
+  attachment,
+  playingVoiceUrl,
+  setPlayingVoiceUrl,
+}: {
+  attachment: AttachmentResponse;
+  playingVoiceUrl: string | null;
+  setPlayingVoiceUrl: (url: string | null) => void;
+}) {
+  if (attachment.isVoiceMessage) {
+    return (
+      <VoiceMessagePlayer
+        attachment={attachment}
+        playingVoiceUrl={playingVoiceUrl}
+        setPlayingVoiceUrl={setPlayingVoiceUrl}
+      />
+    );
+  }
   if (attachment.resourceType === 'image') {
     const cloudName = getCloudinaryCloudName(attachment.url);
     const src =
@@ -222,7 +373,7 @@ function AttachmentDisplay({ attachment }: { attachment: AttachmentResponse }) {
       </div>
     );
   }
-  if (attachment.resourceType === 'video') {
+  if (attachment.resourceType === 'video' && !attachment.isVoiceMessage) {
     return (
       <div className="attachment attachment-video">
         <a href={attachment.url} target="_blank" rel="noopener noreferrer" className="attachment-video-preview">
@@ -266,6 +417,8 @@ function MessageBubble({
   messagesInChat = [],
   chatId,
   chatNames = {},
+  playingVoiceUrl,
+  setPlayingVoiceUrl,
 }: {
   m: DisplayMessage;
   readThreshold: number;
@@ -276,6 +429,8 @@ function MessageBubble({
   messagesInChat?: DisplayMessage[];
   chatId?: string;
   chatNames?: Record<string, string>;
+  playingVoiceUrl?: string | null;
+  setPlayingVoiceUrl?: (url: string | null) => void;
 }) {
   const isUnread = !m.isOwn && m.timestamp > readThreshold;
   const statusText =
@@ -349,7 +504,12 @@ function MessageBubble({
     m.attachments && m.attachments.length > 0 ? (
       <div className="message-attachments">
         {m.attachments.map((att) => (
-          <AttachmentDisplay key={att.id} attachment={att} />
+          <AttachmentDisplay
+            key={att.id || att.publicId || att.url}
+            attachment={att}
+            playingVoiceUrl={playingVoiceUrl ?? null}
+            setPlayingVoiceUrl={setPlayingVoiceUrl ?? (() => {})}
+          />
         ))}
       </div>
     ) : null;
