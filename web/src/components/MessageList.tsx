@@ -61,6 +61,12 @@ export function MessageList({ chatId, isCompose }: MessageListProps) {
         result.push([...run]);
         run = [];
       }
+      // Обычное сообщение (без forwardFrom) после пересланных — закрываем блок пересланных,
+      // иначе «Спишь?» попадал бы в один блок с ними и отображался как пересланное.
+      if (!bid && run.length > 0 && prevBid !== null) {
+        result.push([...run]);
+        run = [];
+      }
       run.push(m);
       if (!bid) {
         result.push([...run]);
