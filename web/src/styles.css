@@ -728,6 +728,15 @@ h1 {
 .send-row {
   display: flex;
   gap: 8px;
+  flex-shrink: 0;
+  margin-top: 8px;
+}
+
+.reply-mode-hint,
+.upload-error,
+.upload-progress,
+.pending-attachments {
+  flex-shrink: 0;
 }
 
 #message-input {

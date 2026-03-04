@@ -21,6 +21,7 @@ export function ChatPanel({ chatIds }: ChatPanelProps) {
 
   const selectedChatId = state.selectedChatId;
   const composeToUsername = state.composeToUsername;
+  /** Кнопка прикрепления показывается всегда в панели чата; загрузка возможна только при выбранном чате */
   const canAttach = !!selectedChatId && !composeToUsername;
 
   useEffect(() => {
@@ -327,27 +328,31 @@ export function ChatPanel({ chatIds }: ChatPanelProps) {
         </div>
       ) : null}
       <div className="send-row">
-        {canAttach ? (
-          <>
-            <input
-              ref={fileInputRef}
-              type="file"
-              multiple
-              accept=".jpg,.jpeg,.png,.gif,.webp,.mp4,.mov,.avi,.pdf,.doc,.docx,.txt,.zip,.rar,image/*,video/*"
-              className="file-input-hidden"
-              onChange={handleFileSelect}
-            />
-            <button
-              type="button"
-              className="attach-btn"
-              aria-label="Прикрепить файл"
-              onClick={() => fileInputRef.current?.click()}
-              disabled={uploadingFiles.length > 0}
-            >
-              📎
-            </button>
-          </>
-        ) : null}
+        <input
+          ref={fileInputRef}
+          type="file"
+          multiple
+          accept=".jpg,.jpeg,.png,.gif,.webp,.mp4,.mov,.avi,.pdf,.doc,.docx,.txt,.zip,.rar,image/*,video/*"
+          className="file-input-hidden"
+          onChange={handleFileSelect}
+          aria-hidden
+        />
+        <button
+          type="button"
+          className="attach-btn"
+          aria-label="Прикрепить файл"
+          title="Прикрепить файл (фото, видео, документ)"
+          onClick={() => {
+            if (!canAttach) {
+              setUploadError('Сначала выберите чат слева');
+              return;
+            }
+            fileInputRef.current?.click();
+          }}
+          disabled={uploadingFiles.length > 0}
+        >
+          📎
+        </button>
         <input
           ref={messageInputRef}
           id="message-input"
