@@ -27,6 +27,7 @@ export const initialAppState: AppState = {
   pendingByClientId: {},
   chatNames: {},
   chatLastMessageTime: {},
+  chatLastMessagePreview: {},
   selectedChatId: '',
   composeToUsername: null,
   lastReadByChat: {},
@@ -115,14 +116,24 @@ export function appReducer(state: AppState, action: AppAction): AppState {
       };
     }
 
-    case 'ADD_PENDING':
+    case 'ADD_PENDING': {
+      const payload = action.payload;
+      const preview = payload.content.slice(0, 30) + (payload.content.length > 30 ? '…' : '');
       return {
         ...state,
         pendingByClientId: {
           ...state.pendingByClientId,
-          [action.payload.clientMessageId]: action.payload,
+          [payload.clientMessageId]: payload,
         },
+        chatLastMessagePreview:
+          payload.chatId
+            ? {
+                ...state.chatLastMessagePreview,
+                [payload.chatId]: { text: preview, isOwn: true },
+              }
+            : state.chatLastMessagePreview,
       };
+    }
     case 'REMOVE_PENDING': {
       const { [action.payload]: _, ...rest } = state.pendingByClientId;
       return { ...state, pendingByClientId: rest };
@@ -181,6 +192,16 @@ export function appReducer(state: AppState, action: AppAction): AppState {
           ),
         },
       };
+    case 'SET_CHAT_LAST_MESSAGE_PREVIEW': {
+      const { chatId, text, isOwn } = action.payload;
+      return {
+        ...state,
+        chatLastMessagePreview: {
+          ...state.chatLastMessagePreview,
+          [chatId]: { text, isOwn },
+        },
+      };
+    }
     case 'SET_CHAT_NAME':
       return {
         ...state,

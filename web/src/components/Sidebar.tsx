@@ -125,12 +125,18 @@ export function Sidebar({ chatIds }: SidebarProps) {
           const list = state.messagesByChat[chatId] ?? [];
           const last = list.length > 0 ? list[list.length - 1] : undefined;
           const serverLastTime = state.chatLastMessageTime[chatId];
+          const savedPreview = state.chatLastMessagePreview[chatId];
           const rawPreview = last
             ? last.content.slice(0, 30) + (last.content.length > 30 ? '…' : '')
-            : serverLastTime
-              ? 'Сообщение'
-              : 'Нет сообщений';
-          const preview = last?.isOwn ? `Вы: ${rawPreview}` : rawPreview;
+            : savedPreview
+              ? savedPreview.text
+              : serverLastTime
+                ? 'Сообщение'
+                : 'Нет сообщений';
+          const preview =
+            last ? (last.isOwn ? `Вы: ${rawPreview}` : rawPreview)
+            : savedPreview ? (savedPreview.isOwn ? `Вы: ${rawPreview}` : rawPreview)
+            : rawPreview;
           const timeStr = last
             ? formatChatListTime(last.timestamp)
             : serverLastTime

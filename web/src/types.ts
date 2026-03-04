@@ -57,6 +57,9 @@ export interface ChatFromServer {
   updatedAt: number;
   lastMessageId: string | null;
   lastMessageTime: number | null;
+  /** Превью последнего сообщения (если сервер присылает) */
+  lastMessagePreview?: string | null;
+  lastMessageIsOwn?: boolean;
 }
 
 /** Формат сообщения в ответе бэкенда (messages_list и type: "message") */

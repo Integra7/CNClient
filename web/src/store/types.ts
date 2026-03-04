@@ -23,6 +23,8 @@ export interface AppState {
   chatNames: Record<string, string>;
   /** Время последнего сообщения в чате из ответа сервера (chats_list), для сортировки и превью */
   chatLastMessageTime: Record<string, number>;
+  /** Текст последнего сообщения по чату (для превью в списке, когда сообщения чата ещё не загружены) */
+  chatLastMessagePreview: Record<string, { text: string; isOwn: boolean }>;
   selectedChatId: string;
   composeToUsername: string | null;
   lastReadByChat: Record<string, number>;
@@ -59,6 +61,7 @@ export type AppAction =
   | { type: 'SET_CHAT_NAMES'; payload: Record<string, string> }
   | { type: 'SET_CHAT_LAST_MESSAGE_TIMES'; payload: Record<string, number> }
   | { type: 'SET_CHAT_LAST_MESSAGE_TIME'; payload: { chatId: string; time: number } }
+  | { type: 'SET_CHAT_LAST_MESSAGE_PREVIEW'; payload: { chatId: string; text: string; isOwn: boolean } }
   | { type: 'SET_CHAT_NAME'; payload: { chatId: string; name: string } }
   | { type: 'SELECT_CHAT'; payload: string }
   | { type: 'OPEN_COMPOSE'; payload: string }

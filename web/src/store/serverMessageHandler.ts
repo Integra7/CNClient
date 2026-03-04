@@ -131,6 +131,13 @@ export function createServerMessageHandler(
           for (const c of chats) {
             names[c.id] = c.name ?? names[c.id] ?? shortIdFn(c.id);
             if (c.lastMessageTime != null) lastMessageTimes[c.id] = c.lastMessageTime;
+            if (c.lastMessagePreview != null && c.lastMessagePreview !== '') {
+              const text = c.lastMessagePreview.slice(0, 30) + (c.lastMessagePreview.length > 30 ? '…' : '');
+              dispatch({
+                type: 'SET_CHAT_LAST_MESSAGE_PREVIEW',
+                payload: { chatId: c.id, text, isOwn: !!c.lastMessageIsOwn },
+              });
+            }
           }
           dispatch({ type: 'SET_CHAT_NAMES', payload: names });
           dispatch({ type: 'SET_CHAT_LAST_MESSAGE_TIMES', payload: lastMessageTimes });
@@ -188,6 +195,14 @@ export function createServerMessageHandler(
           }
           merged.sort((a, b) => a.timestamp - b.timestamp);
           dispatch({ type: 'SET_MESSAGES', payload: { chatId: msg.chatId, messages: merged } });
+          const lastM = merged[merged.length - 1];
+          if (lastM) {
+            const raw = lastM.content.slice(0, 30) + (lastM.content.length > 30 ? '…' : '');
+            dispatch({
+              type: 'SET_CHAT_LAST_MESSAGE_PREVIEW',
+              payload: { chatId: msg.chatId, text: raw, isOwn: lastM.isOwn },
+            });
+          }
           dispatch({ type: 'RECOMPUTE_UNREAD' });
         } catch {
           // ignore
@@ -218,6 +233,11 @@ export function createServerMessageHandler(
           dispatch({
             type: 'SET_CHAT_LAST_MESSAGE_TIME',
             payload: { chatId: ackChatId, time: pending.sentAt },
+          });
+          const raw = pending.content.slice(0, 30) + (pending.content.length > 30 ? '…' : '');
+          dispatch({
+            type: 'SET_CHAT_LAST_MESSAGE_PREVIEW',
+            payload: { chatId: ackChatId, text: raw, isOwn: true },
           });
         }
         persist(getState());
@@ -290,6 +310,11 @@ export function createServerMessageHandler(
         dispatch({
           type: 'SET_CHAT_LAST_MESSAGE_TIME',
           payload: { chatId: msg.chatId, time: newMsg.timestamp },
+        });
+        const rawPreview = newMsg.content.slice(0, 30) + (newMsg.content.length > 30 ? '…' : '');
+        dispatch({
+          type: 'SET_CHAT_LAST_MESSAGE_PREVIEW',
+          payload: { chatId: msg.chatId, text: rawPreview, isOwn: newMsg.isOwn },
         });
 
         if (msg.senderId !== currentUserId) {
