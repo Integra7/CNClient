@@ -9,10 +9,9 @@ function mapForwardFrom(m: {
   forwardFromSenderName?: string | null;
   forwardFromTimestamp?: number | null;
 }): DisplayMessage['forwardFrom'] | undefined {
-  // Показываем как пересланное только при явном isForwarded: true.
-  // Иначе обычные сообщения с заполненным forwardFromSenderName (например, имя отправителя с бэка)
-  // ошибочно отображались бы как «Переслано от...».
-  if (!m.isForwarded) return undefined;
+  // Показываем как пересланное только при явном isForwarded === true (именно boolean).
+  // Строка "false" в JS truthy, поэтому !m.isForwarded не отсекает её — проверяем строго.
+  if (m.isForwarded !== true) return undefined;
   return {
     senderId: m.forwardFromSenderId ?? '',
     senderName: m.forwardFromSenderName ?? 'Unknown',

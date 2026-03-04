@@ -99,7 +99,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const saved = loadMessagesForUser(token);
     const messagesByChat: Record<string, import('../types').DisplayMessage[]> = {};
     saved.forEach((list, chatId) => {
-      messagesByChat[chatId] = list;
+      // Убираем устаревшие forwardFrom/forwardBatchId из кэша, иначе старые сохранённые
+      // сообщения продолжают отображаться как «пересланные». Актуальное состояние придёт с сервера при запросе messages_list.
+      messagesByChat[chatId] = list.map(({ forwardFrom, forwardBatchId, ...m }) => m);
     });
     const chatNames = loadChatNames(token);
     let lastReadByChat = loadLastRead(token);
