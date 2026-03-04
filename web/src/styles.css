@@ -853,6 +853,37 @@ h1 {
   font-size: 12px;
 }
 
+.pending-attachment-chip.uploading-chip {
+  flex-direction: column;
+  align-items: flex-start;
+  min-width: 100px;
+}
+
+.pending-attachment-chip .pending-attachment-status {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.pending-attachment-chip .pending-attachment-progress-bar {
+  width: 100%;
+  height: 4px;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.pending-attachment-chip .pending-attachment-progress-fill {
+  height: 100%;
+  background: var(--accent);
+  transition: width 0.2s;
+}
+
+.pending-attachment-chip .pending-attachment-badge {
+  font-size: 10px;
+  color: var(--success);
+  font-weight: 500;
+}
+
 .pending-attachment-thumb {
   width: 32px;
   height: 32px;

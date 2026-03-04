@@ -15,7 +15,8 @@ export function ChatPanel({ chatIds }: ChatPanelProps) {
   const messageInputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [pendingAttachments, setPendingAttachments] = useState<AttachmentRequest[]>([]);
-  const [uploadProgress, setUploadProgress] = useState<{ fileIndex: number; percent: number } | null>(null);
+  /** Файлы в процессе загрузки: сразу показываем превью (для фото) и прогресс */
+  const [uploadingFiles, setUploadingFiles] = useState<{ file: File; previewUrl: string | null; progress: number }[]>([]);
   const [uploadError, setUploadError] = useState<string | null>(null);
 
   const selectedChatId = state.selectedChatId;
@@ -59,16 +60,29 @@ export function ChatPanel({ chatIds }: ChatPanelProps) {
           return;
         }
       }
-      setUploadProgress({ fileIndex: 0, percent: 0 });
+      const withPreview = fileList.map((file) => ({
+        file,
+        previewUrl: file.type.startsWith('image/') ? URL.createObjectURL(file) : null,
+        progress: 0,
+      }));
+      setUploadingFiles(withPreview);
       try {
         const uploaded = await uploadFiles(fileList, (fileIndex, percent) => {
-          setUploadProgress({ fileIndex, percent });
+          setUploadingFiles((prev) =>
+            prev.map((item, i) => (i === fileIndex ? { ...item, progress: percent } : item))
+          );
         });
         setPendingAttachments((prev) => [...prev, ...uploaded]);
+        withPreview.forEach((item) => {
+          if (item.previewUrl) URL.revokeObjectURL(item.previewUrl);
+        });
+        setUploadingFiles([]);
       } catch (err) {
         setUploadError(err instanceof Error ? err.message : 'Ошибка загрузки');
-      } finally {
-        setUploadProgress(null);
+        withPreview.forEach((item) => {
+          if (item.previewUrl) URL.revokeObjectURL(item.previewUrl);
+        });
+        setUploadingFiles([]);
       }
     },
     [canAttach]
@@ -267,24 +281,39 @@ export function ChatPanel({ chatIds }: ChatPanelProps) {
           <button type="button" onClick={() => setUploadError(null)} aria-label="Закрыть">×</button>
         </div>
       ) : null}
-      {uploadProgress != null ? (
-        <div className="upload-progress">
-          <div className="upload-progress-bar" style={{ width: `${uploadProgress.percent}%` }} />
-          <span>Загрузка… {uploadProgress.percent}%</span>
+      {uploadingFiles.length > 0 ? (
+        <div className="pending-attachments uploading">
+          {uploadingFiles.map((item, i) => (
+            <span key={`uploading-${i}-${item.file.name}`} className="pending-attachment-chip uploading-chip">
+              {item.previewUrl ? (
+                <img src={item.previewUrl} alt="" className="pending-attachment-thumb" />
+              ) : (
+                <span className="pending-attachment-icon">📎</span>
+              )}
+              <span className="pending-attachment-name" title={item.file.name}>
+                {item.file.name.length > 12 ? item.file.name.slice(0, 10) + '…' : item.file.name}
+              </span>
+              <span className="pending-attachment-status">Загрузка… {item.progress}%</span>
+              <div className="pending-attachment-progress-bar">
+                <div className="pending-attachment-progress-fill" style={{ width: `${item.progress}%` }} />
+              </div>
+            </span>
+          ))}
         </div>
       ) : null}
       {pendingAttachments.length > 0 ? (
         <div className="pending-attachments">
           {pendingAttachments.map((a, i) => (
             <span key={a.publicId} className="pending-attachment-chip">
-              {a.resourceType === 'image' && a.thumbnailUrl ? (
-                <img src={a.thumbnailUrl} alt="" className="pending-attachment-thumb" />
+              {a.resourceType === 'image' && (a.thumbnailUrl || a.url) ? (
+                <img src={a.thumbnailUrl || a.url} alt="" className="pending-attachment-thumb" />
               ) : (
                 <span className="pending-attachment-icon">📎</span>
               )}
               <span className="pending-attachment-name" title={a.fileName}>
                 {a.fileName.length > 12 ? a.fileName.slice(0, 10) + '…' : a.fileName}
               </span>
+              <span className="pending-attachment-badge">Загружено</span>
               <button
                 type="button"
                 className="pending-attachment-remove"
@@ -313,7 +342,7 @@ export function ChatPanel({ chatIds }: ChatPanelProps) {
               className="attach-btn"
               aria-label="Прикрепить файл"
               onClick={() => fileInputRef.current?.click()}
-              disabled={uploadProgress != null}
+              disabled={uploadingFiles.length > 0}
             >
               📎
             </button>
