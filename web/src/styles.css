@@ -1009,19 +1009,20 @@ h1 {
 
 .message .message-forward-from {
   font-size: 11px;
-  color: var(--text-muted);
+  color: rgba(228, 228, 231, 0.88);
   margin-bottom: 4px;
   line-height: 1.35;
 }
 
 .message .meta-forward-by {
   font-size: 11px;
-  color: var(--text-muted);
+  color: rgba(228, 228, 231, 0.88);
 }
 
 .message .meta-forward-original {
   font-size: 10px;
-  opacity: 0.9;
+  color: rgba(228, 228, 231, 0.82);
+  display: block;
 }
 
 .forwarded-block {
