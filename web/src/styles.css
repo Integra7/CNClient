@@ -772,20 +772,34 @@ h1 {
   border-color: var(--accent);
 }
 
-#send {
-  padding: 10px 20px;
+#send.send-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  min-width: 44px;
+  height: 44px;
+  padding: 0;
   background: var(--accent);
   color: var(--bg);
   border: none;
   border-radius: var(--radius);
-  font-family: var(--font-mono);
-  font-size: 13px;
-  font-weight: 500;
   cursor: pointer;
+  transition: background 0.15s;
 }
 
-#send:hover {
+#send.send-btn:hover {
   background: var(--accent-hover);
+}
+
+#send.send-btn:active {
+  transform: scale(0.97);
+}
+
+.send-btn-icon {
+  width: 22px;
+  height: 22px;
+  flex-shrink: 0;
 }
 
 .file-input-hidden {
@@ -1860,13 +1874,14 @@ h1 {
     gap: 10px;
   }
 
-  #message-input,
-  #send {
+  #message-input {
     min-height: 44px;
   }
 
-  #send {
-    padding: 10px 18px;
+  #send.send-btn {
+    width: 44px;
+    min-width: 44px;
+    height: 44px;
   }
 
   .new-chat-row {

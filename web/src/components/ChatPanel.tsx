@@ -625,8 +625,10 @@ export function ChatPanel({ chatIds }: ChatPanelProps) {
             }
           }}
         />
-        <button type="button" id="send" onClick={sendMessage}>
-          Отправить
+        <button type="button" id="send" className="send-btn" onClick={sendMessage} aria-label="Отправить">
+          <svg className="send-btn-icon" viewBox="0 0 24 24" aria-hidden>
+            <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" fill="currentColor" />
+          </svg>
         </button>
       </div>
     </div>
