@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useMemo, useCallback, useState } from 'react';
 import { useApp } from '../context/AppContext';
 import type { DisplayMessage, AttachmentResponse } from '../types';
-import { formatTime, escapeHtml, formatFileSize, formatDuration } from '../utils/format';
+import { formatTime, escapeHtml, formatFileSize, formatDuration, formatFileName } from '../utils/format';
 import { buildImageDisplayUrl, getCloudinaryCloudName } from '../utils/upload';
 
 interface MessageListProps {
@@ -410,7 +410,7 @@ function AttachmentDisplay({
           <img src={src} alt={attachment.fileName} loading="lazy" />
         </a>
         <div className="attachment-info">
-          <span className="attachment-filename">{attachment.fileName}</span>
+          <span className="attachment-filename" title={attachment.fileName}>{formatFileName(attachment.fileName)}</span>
           <span className="attachment-size">{formatFileSize(attachment.fileSize)}</span>
         </div>
       </div>
@@ -430,7 +430,7 @@ function AttachmentDisplay({
           ) : null}
         </a>
         <div className="attachment-info">
-          <span className="attachment-filename">{attachment.fileName}</span>
+          <span className="attachment-filename" title={attachment.fileName}>{formatFileName(attachment.fileName)}</span>
           <span className="attachment-size">{formatFileSize(attachment.fileSize)}</span>
         </div>
       </div>
@@ -440,7 +440,7 @@ function AttachmentDisplay({
     <div className="attachment attachment-file">
       <span className="attachment-file-icon">📄</span>
       <div className="attachment-info">
-        <span className="attachment-filename">{attachment.fileName}</span>
+        <span className="attachment-filename" title={attachment.fileName}>{formatFileName(attachment.fileName)}</span>
         <span className="attachment-size">{formatFileSize(attachment.fileSize)}</span>
       </div>
       <a href={attachment.url} download={attachment.fileName} target="_blank" rel="noopener noreferrer" className="attachment-download">

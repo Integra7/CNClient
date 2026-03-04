@@ -4,7 +4,7 @@ import { shortId } from '../utils/format';
 import type { ReplyToMessage, AttachmentRequest, AttachmentResponse, DisplayMessage } from '../types';
 import { MessageList } from './MessageList';
 import { SelectionToolbar } from './SelectionToolbar';
-import { formatDuration } from '../utils/format';
+import { formatDuration, formatFileName } from '../utils/format';
 import { validateFile, uploadFiles, uploadVoiceToCloudinary, validateVoiceMessage } from '../utils/upload';
 
 interface ChatPanelProps {
@@ -487,7 +487,7 @@ export function ChatPanel({ chatIds }: ChatPanelProps) {
                 <span className="pending-attachment-icon">📎</span>
               )}
               <span className="pending-attachment-name" title={item.file.name}>
-                {item.file.name.length > 12 ? item.file.name.slice(0, 10) + '…' : item.file.name}
+                {formatFileName(item.file.name)}
               </span>
               <span className="pending-attachment-status">Загрузка… {item.progress}%</span>
               <div className="pending-attachment-progress-bar">
@@ -509,7 +509,7 @@ export function ChatPanel({ chatIds }: ChatPanelProps) {
                 <span className="pending-attachment-icon">📎</span>
               )}
               <span className="pending-attachment-name" title={a.fileName}>
-                {a.fileName.length > 12 ? a.fileName.slice(0, 10) + '…' : a.fileName}
+                {formatFileName(a.fileName)}
               </span>
               <span className="pending-attachment-badge">Загружено</span>
               <button

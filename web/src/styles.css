@@ -1243,8 +1243,13 @@ h1 {
 }
 
 .message .meta-forward-by {
+  display: block;
   font-size: 11px;
   color: rgba(228, 228, 231, 0.88);
+}
+
+.message .meta-forward {
+  display: block;
 }
 
 .message .meta-forward-original {

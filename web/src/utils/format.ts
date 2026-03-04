@@ -41,3 +41,13 @@ export function formatDuration(seconds: number): string {
   const s = Math.floor(seconds % 60);
   return `${m}:${s.toString().padStart(2, '0')}`;
 }
+
+/** Имя файла для отображения: не более 15 символов основы + "...." + расширение (например 177264052102163....jpg) */
+export function formatFileName(name: string, maxBaseLen = 15): string {
+  if (!name || name.length <= maxBaseLen + 5) return name;
+  const lastDot = name.lastIndexOf('.');
+  const ext = lastDot > 0 ? name.slice(lastDot) : '';
+  const base = lastDot > 0 ? name.slice(0, lastDot) : name;
+  if (base.length <= maxBaseLen) return name;
+  return base.slice(0, maxBaseLen) + '....' + ext;
+}
