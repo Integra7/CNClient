@@ -55,6 +55,16 @@ export const initialAppState: AppState = {
   editMessageContent: '',
   notificationsPermission: null,
   showNotificationsBanner: false,
+  callStatus: 'idle',
+  callId: null,
+  callerId: null,
+  callerUsername: null,
+  incomingOfferSdp: null,
+  callError: null,
+  callPendingUsername: null,
+  callPeerDisplayName: null,
+  callStartTime: null,
+  callMuted: false,
 };
 
 export function appReducer(state: AppState, action: AppAction): AppState {
@@ -503,6 +513,77 @@ export function appReducer(state: AppState, action: AppAction): AppState {
 
     case 'INIT_STATE':
       return { ...state, ...action.payload };
+
+    case 'CALL_INCOMING':
+      return {
+        ...state,
+        callStatus: 'incoming',
+        callId: action.payload.callId,
+        callerId: action.payload.callerId,
+        callerUsername: action.payload.callerUsername,
+        incomingOfferSdp: action.payload.sdp,
+        callError: null,
+      };
+    case 'CALL_OFFER_SENT':
+      return {
+        ...state,
+        callStatus: 'outgoing',
+        callId: action.payload.callId,
+        callError: null,
+      };
+    case 'CALL_ANSWER':
+    case 'CALL_ANSWER_SENT':
+      return {
+        ...state,
+        callStatus: 'in-call',
+        callId: action.payload.callId,
+        callError: null,
+        callStartTime: Date.now(),
+      };
+    case 'CALL_REJECTED':
+    case 'CALL_HANGUP':
+    case 'CALL_HANGUP_OK':
+      return {
+        ...state,
+        callStatus: 'idle',
+        callId: null,
+        callerId: null,
+        callerUsername: null,
+        incomingOfferSdp: null,
+        callError: null,
+        callPeerDisplayName: null,
+        callStartTime: null,
+        callMuted: false,
+      };
+    case 'CALL_STATUS':
+      return {
+        ...state,
+        callStatus: action.payload,
+        ...(action.payload === 'idle' ? { callStartTime: null, callMuted: false } : {}),
+      };
+    case 'CALL_ERROR':
+      return {
+        ...state,
+        callError: action.payload,
+        ...(action.payload
+          ? {
+              callStatus: 'idle' as const,
+              callId: null,
+              callerId: null,
+              callerUsername: null,
+              incomingOfferSdp: null,
+              callPeerDisplayName: null,
+              callStartTime: null,
+              callMuted: false,
+            }
+          : {}),
+      };
+    case 'CALL_PENDING_USERNAME':
+      return { ...state, callPendingUsername: action.payload };
+    case 'CALL_SET_PEER_DISPLAY_NAME':
+      return { ...state, callPeerDisplayName: action.payload };
+    case 'CALL_SET_MUTED':
+      return { ...state, callMuted: action.payload };
 
     default:
       return state;

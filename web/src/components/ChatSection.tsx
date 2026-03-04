@@ -3,6 +3,7 @@ import { useApp } from '../context/AppContext';
 import { getChatIdsSorted } from '../utils/chatList';
 import { Sidebar } from './Sidebar';
 import { ChatMain } from './ChatMain';
+import { CallUI } from './CallUI';
 
 export function ChatSection() {
   const { state } = useApp();
@@ -27,6 +28,7 @@ export function ChatSection() {
       className={showChatPanel ? 'chat-section chat-open' : 'chat-section'}
       hidden={!isOpen}
     >
+      <CallUI />
       <Sidebar chatIds={chatIds} />
       <ChatMain showChatPanel={showChatPanel} chatIds={chatIds} />
     </div>

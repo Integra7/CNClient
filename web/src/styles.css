@@ -649,6 +649,213 @@ h1 {
   min-width: 0;
 }
 
+.chat-call-btn {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  background: var(--surface-hover);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--accent);
+  cursor: pointer;
+}
+.chat-call-btn:hover {
+  background: var(--border);
+  color: var(--accent-hover);
+}
+.chat-call-btn .call-btn-icon {
+  width: 20px;
+  height: 20px;
+}
+
+/* ---- Звонки (Call UI) ---- */
+.call-ui {
+  font-family: var(--font-sans);
+}
+.call-error-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 14px;
+  margin-bottom: 8px;
+  background: rgba(248, 113, 113, 0.15);
+  border: 1px solid var(--error);
+  border-radius: var(--radius);
+  font-size: 0.9rem;
+}
+.call-error-text {
+  color: var(--error);
+}
+.call-dismiss-error {
+  flex-shrink: 0;
+  padding: 4px 8px;
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 1.2rem;
+  line-height: 1;
+}
+.call-dismiss-error:hover {
+  color: var(--text);
+}
+
+.call-incoming-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.75);
+  padding: 24px;
+}
+.call-incoming-box {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 28px 32px;
+  max-width: 320px;
+  width: 100%;
+  text-align: center;
+}
+.call-incoming-title {
+  margin: 0 0 8px;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+.call-incoming-caller {
+  margin: 0 0 24px;
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: var(--text);
+}
+.call-incoming-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.call-btn {
+  padding: 10px 20px;
+  border-radius: var(--radius);
+  font-family: var(--font-sans);
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  border: none;
+}
+.call-btn-accept {
+  background: var(--success);
+  color: var(--bg);
+}
+.call-btn-accept:hover {
+  filter: brightness(1.1);
+}
+.call-btn-reject {
+  background: var(--surface-hover);
+  border: 1px solid var(--border);
+  color: var(--text);
+}
+.call-btn-reject:hover {
+  background: var(--border);
+}
+.call-btn-hangup {
+  background: var(--error);
+  color: #fff;
+}
+.call-btn-hangup:hover {
+  filter: brightness(1.1);
+}
+
+.call-outgoing-bar,
+.call-active-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 14px;
+  margin-bottom: 8px;
+  background: var(--surface-hover);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  font-size: 0.9rem;
+}
+.call-outgoing-label,
+.call-active-label {
+  color: var(--text);
+}
+.call-active-bar {
+  flex-wrap: wrap;
+}
+.call-timer {
+  font-variant-numeric: tabular-nums;
+  color: var(--text-muted);
+  font-size: 0.95rem;
+  min-width: 3ch;
+}
+.call-active-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+}
+.call-action-icon {
+  width: 22px;
+  height: 22px;
+  display: block;
+}
+.call-btn-mute {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+.call-btn-mute:hover {
+  background: var(--border);
+  color: var(--text);
+}
+.call-btn-mute.muted {
+  background: rgba(248, 113, 113, 0.2);
+  border-color: var(--error);
+  color: var(--error);
+}
+.call-btn-mute.muted:hover {
+  background: rgba(248, 113, 113, 0.3);
+}
+.call-active-bar .call-btn-hangup {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  font-size: 0.85rem;
+}
+.call-hangup-text {
+  font-family: var(--font-sans);
+}
+.call-active-bar .call-btn-hangup .call-action-icon {
+  width: 18px;
+  height: 18px;
+}
+.call-outgoing-bar .call-btn-hangup {
+  padding: 8px 16px;
+  font-size: 0.85rem;
+}
+
 .chat-messages-wrap {
   flex: 1;
   min-height: 0;

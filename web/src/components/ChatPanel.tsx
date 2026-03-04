@@ -12,7 +12,7 @@ interface ChatPanelProps {
 }
 
 export function ChatPanel({ chatIds }: ChatPanelProps) {
-  const { state, dispatch, wsClientRef } = useApp();
+  const { state, dispatch, wsClientRef, callManagerRef } = useApp();
   const messageInputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [pendingAttachments, setPendingAttachments] = useState<AttachmentRequest[]>([]);
@@ -70,6 +70,21 @@ export function ChatPanel({ chatIds }: ChatPanelProps) {
     : composeToUsername
       ? `@${composeToUsername}`
       : '';
+
+  const canCall = !!selectedChatId && !composeToUsername && state.connectionState === 'connected';
+  const onCallClick = () => {
+    if (!canCall) return;
+    const username = state.chatNames[selectedChatId];
+    if (!username) return;
+    dispatch({ type: 'CALL_SET_PEER_DISPLAY_NAME', payload: username });
+    const user = state.findUser.users.find((u) => u.username.toLowerCase() === username.toLowerCase());
+    if (user) {
+      callManagerRef.current?.startCall(user.id);
+    } else {
+      dispatch({ type: 'CALL_PENDING_USERNAME', payload: username });
+      wsClientRef.current?.findUser(username);
+    }
+  };
 
   const handleFileSelect = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -447,6 +462,19 @@ export function ChatPanel({ chatIds }: ChatPanelProps) {
           {backButtonText}
         </button>
         <div id="chat-header">{headerTitle}</div>
+        {canCall ? (
+          <button
+            type="button"
+            className="chat-call-btn"
+            aria-label="Позвонить"
+            title="Звонок"
+            onClick={onCallClick}
+          >
+            <svg className="call-btn-icon" viewBox="0 0 24 24" aria-hidden>
+              <path d="M6.62 10.79c1.44 2.83 3.76 5.14 6.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2z" fill="currentColor" />
+            </svg>
+          </button>
+        ) : null}
       </div>
       <div className="chat-messages-wrap">
         <SelectionToolbar />

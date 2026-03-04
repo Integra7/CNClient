@@ -1,5 +1,6 @@
 import type { ServerMessage, DisplayMessage, MessageFromServer, ChatFromServer, ReplyToMessage, AttachmentResponse } from '../types';
 import type { AppState, AppAction } from './types';
+import type { CallManager } from '../callManager';
 
 type Dispatch = (action: AppAction) => void;
 
@@ -86,11 +87,64 @@ export function createServerMessageHandler(
   getState: GetState,
   shortIdFn: (id: string) => string,
   persist: Persist,
-  onNotify: OnNotify
+  onNotify: OnNotify,
+  callManager: CallManager | null
 ): (msg: ServerMessage) => void {
   return function handleServerMessage(msg: ServerMessage): void {
     const state = getState();
     const currentUserId = state.currentUserId;
+
+    // Сигнализация звонков: пересылаем в callManager и обновляем state
+    const callType = msg.type as string;
+    if (
+      callType === 'call_offer' ||
+      callType === 'call_offer_sent' ||
+      callType === 'call_answer' ||
+      callType === 'call_answer_sent' ||
+      callType === 'call_rejected' ||
+      callType === 'call_hangup' ||
+      callType === 'call_hangup_ok' ||
+      callType === 'call_ice'
+    ) {
+      if (callType === 'call_offer' && msg.callId && msg.callerId != null && msg.callerUsername != null && msg.sdp) {
+        dispatch({
+          type: 'CALL_INCOMING',
+          payload: {
+            callId: msg.callId,
+            callerId: msg.callerId,
+            callerUsername: msg.callerUsername,
+            sdp: msg.sdp,
+          },
+        });
+      } else if (callType === 'call_offer_sent' && msg.callId) {
+        dispatch({ type: 'CALL_OFFER_SENT', payload: { callId: msg.callId } });
+        callManager?.handleServerMessage('call_offer_sent', { callId: msg.callId });
+      } else if (callType === 'call_answer' && msg.callId && msg.sdp) {
+        dispatch({ type: 'CALL_ANSWER', payload: { callId: msg.callId, sdp: msg.sdp } });
+        callManager?.handleServerMessage('call_answer', { callId: msg.callId, sdp: msg.sdp });
+      } else if (callType === 'call_answer_sent' && msg.callId) {
+        dispatch({ type: 'CALL_ANSWER_SENT', payload: { callId: msg.callId } });
+      } else if (callType === 'call_rejected' && msg.callId) {
+        dispatch({ type: 'CALL_REJECTED', payload: { callId: msg.callId } });
+        callManager?.handleServerMessage('call_rejected', { callId: msg.callId });
+      } else if (callType === 'call_hangup' && msg.callId) {
+        dispatch({ type: 'CALL_HANGUP', payload: { callId: msg.callId } });
+        callManager?.handleServerMessage('call_hangup', { callId: msg.callId });
+      } else if (callType === 'call_hangup_ok' && msg.callId) {
+        dispatch({ type: 'CALL_HANGUP_OK', payload: { callId: msg.callId } });
+        callManager?.handleServerMessage('call_hangup_ok', { callId: msg.callId });
+      } else if (callType === 'call_ice' && msg.callId && msg.iceCandidate) {
+        callManager?.handleServerMessage('call_ice', { callId: msg.callId, iceCandidate: msg.iceCandidate });
+      }
+      return;
+    }
+
+    if (msg.type === 'error' && msg.error) {
+      if (state.callStatus !== 'idle') {
+        dispatch({ type: 'CALL_ERROR', payload: msg.error });
+        callManager?.handleServerMessage('call_hangup', {});
+      }
+    }
 
     switch (msg.type) {
       case 'user_found': {
@@ -118,8 +172,10 @@ export function createServerMessageHandler(
         }
         users = users.filter((u) => u.id !== currentUserId);
         const pendingOpen = state.findUser.pendingOpenUsername;
+        const callPending = state.callPendingUsername;
         if (users.length === 0) {
           dispatch({ type: 'FIND_USER_NOT_FOUND', payload: null });
+          if (callPending) dispatch({ type: 'CALL_PENDING_USERNAME', payload: null });
         } else {
           const first = users[0];
           const openFirst =
@@ -131,6 +187,10 @@ export function createServerMessageHandler(
             type: 'FIND_USER_RESULT',
             payload: { users, pendingOpenUsername: openFirst ? null : pendingOpen },
           });
+          if (callPending && first && first.username.toLowerCase() === callPending.toLowerCase()) {
+            dispatch({ type: 'CALL_PENDING_USERNAME', payload: null });
+            callManager?.startCall(first.id);
+          }
         }
         break;
       }

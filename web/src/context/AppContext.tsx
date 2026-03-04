@@ -23,6 +23,9 @@ import type { AppState, AppAction } from '../store/types';
 import { createServerMessageHandler } from '../store/serverMessageHandler';
 import { shortId } from '../utils/format';
 import { playNotificationSound, showMessageNotification, showInPageToast } from '../utils/notifications';
+import { createCallManager } from '../callManager';
+import type { CallManager } from '../callManager';
+import type { ClientMessage } from '../types';
 
 interface AppContextValue {
   state: AppState;
@@ -30,6 +33,7 @@ interface AppContextValue {
   getState: () => AppState;
   wsClientRef: React.MutableRefObject<ChatWsClient | null>;
   authClientRef: React.MutableRefObject<ChatWsClient | null>;
+  callManagerRef: React.MutableRefObject<CallManager | null>;
 }
 
 const AppContext = createContext<AppContextValue | null>(null);
@@ -57,25 +61,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const getState = useCallback(() => stateRef.current, []);
   const wsClientRef = useRef<ChatWsClient | null>(null);
   const authClientRef = useRef<ChatWsClient | null>(null);
+  const callManagerRef = useRef<CallManager | null>(null);
 
   const onNotify = useCallback((senderName: string, bodyPreview: string) => {
     playNotificationSound();
     showMessageNotification(senderName, bodyPreview, showInPageToast);
   }, []);
-
-  const handleServerMessage = useCallback(
-    (msg: Parameters<ReturnType<typeof createServerMessageHandler>>[0]) => {
-      const handler = createServerMessageHandler(
-        dispatch,
-        getState,
-        shortId,
-        persistState,
-        onNotify
-      );
-      handler(msg);
-    },
-    [getState, onNotify]
-  );
 
   useEffect(() => {
     if (!state.currentUserId) return;
@@ -92,6 +83,23 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     if (!state.currentUserId) return;
     const token = state.currentUserId;
     if (wsClientRef.current) wsClientRef.current.disconnect();
+    callManagerRef.current = null;
+
+    const send = (msg: ClientMessage) => {
+      wsClientRef.current?.send(msg);
+    };
+    const callManager = createCallManager(send, dispatch);
+    callManagerRef.current = callManager;
+
+    const handleServerMessage = createServerMessageHandler(
+      dispatch,
+      getState,
+      shortId,
+      persistState,
+      onNotify,
+      callManager
+    );
+
     const client = new ChatWsClient(handleServerMessage, (connectionState) => {
       dispatch({ type: 'SET_CONNECTION_STATE', payload: connectionState });
     });
@@ -137,8 +145,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     return () => {
       client.disconnect();
       wsClientRef.current = null;
+      callManagerRef.current = null;
     };
-  }, [state.currentUserId]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [state.currentUserId, getState, onNotify]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const value: AppContextValue = {
     state,
@@ -146,6 +155,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     getState,
     wsClientRef,
     authClientRef,
+    callManagerRef,
   };
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;

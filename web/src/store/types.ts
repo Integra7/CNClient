@@ -48,6 +48,23 @@ export interface AppState {
   editMessageContent: string;
   notificationsPermission: 'default' | 'granted' | 'denied' | null;
   showNotificationsBanner: boolean;
+  /** Звонок 1-на-1: idle | incoming | outgoing | in-call */
+  callStatus: 'idle' | 'incoming' | 'outgoing' | 'in-call';
+  callId: string | null;
+  callerId: string | null;
+  callerUsername: string | null;
+  /** SDP offer для входящего (нужен при нажатии «Принять») */
+  incomingOfferSdp: string | null;
+  /** Ошибка звонка (сервер или WebRTC) */
+  callError: string | null;
+  /** При нажатии «Позвонить» — ждём findUser, чтобы получить calleeId */
+  callPendingUsername: string | null;
+  /** Имя собеседника при исходящем звонке (для экрана «в разговоре») */
+  callPeerDisplayName: string | null;
+  /** Время начала разговора (для таймера), мс */
+  callStartTime: number | null;
+  /** Микрофон выключен во время звонка */
+  callMuted: boolean;
 }
 
 export type AppAction =
@@ -103,4 +120,17 @@ export type AppAction =
   | { type: 'SET_EDIT_MESSAGE_CONTENT'; payload: string }
   | { type: 'SET_NOTIFICATIONS_PERMISSION'; payload: 'default' | 'granted' | 'denied' | null }
   | { type: 'SET_SHOW_NOTIFICATIONS_BANNER'; payload: boolean }
-  | { type: 'INIT_STATE'; payload: Partial<AppState> };
+  | { type: 'INIT_STATE'; payload: Partial<AppState> }
+  /* Звонки */
+  | { type: 'CALL_INCOMING'; payload: { callId: string; callerId: string; callerUsername: string; sdp: string } }
+  | { type: 'CALL_OFFER_SENT'; payload: { callId: string } }
+  | { type: 'CALL_ANSWER'; payload: { callId: string; sdp: string } }
+  | { type: 'CALL_ANSWER_SENT'; payload: { callId: string } }
+  | { type: 'CALL_REJECTED'; payload: { callId: string } }
+  | { type: 'CALL_HANGUP'; payload: { callId: string } }
+  | { type: 'CALL_HANGUP_OK'; payload: { callId: string } }
+  | { type: 'CALL_STATUS'; payload: 'idle' | 'incoming' | 'outgoing' | 'in-call' }
+  | { type: 'CALL_ERROR'; payload: string | null }
+  | { type: 'CALL_PENDING_USERNAME'; payload: string | null }
+  | { type: 'CALL_SET_PEER_DISPLAY_NAME'; payload: string | null }
+  | { type: 'CALL_SET_MUTED'; payload: boolean };

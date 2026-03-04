@@ -43,6 +43,11 @@ export interface ClientMessage {
   chatId?: string;
   content?: string;
   clientMessageId?: string;
+  /** Звонки: для call_offer, call_answer, call_reject, call_hangup, call_ice */
+  callId?: string | null;
+  calleeId?: string | null;
+  sdp?: string | null;
+  iceCandidate?: string | null;
 }
 
 export interface ServerMessage {
@@ -55,6 +60,12 @@ export interface ServerMessage {
   sequenceNumber?: number;
   timestamp?: number;
   error?: string;
+  /** Звонки */
+  callId?: string;
+  callerId?: string;
+  callerUsername?: string;
+  sdp?: string;
+  iceCandidate?: string;
 }
 
 export type MessageStatus = 'sending' | 'sent' | 'delivered' | 'read' | 'failed';
