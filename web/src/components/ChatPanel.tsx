@@ -330,29 +330,31 @@ export function ChatPanel({ chatIds }: ChatPanelProps) {
       <div className="send-row">
         <input
           ref={fileInputRef}
+          id="attach-file-input"
           type="file"
           multiple
           accept=".jpg,.jpeg,.png,.gif,.webp,.mp4,.mov,.avi,.pdf,.doc,.docx,.txt,.zip,.rar,image/*,video/*"
           className="file-input-hidden"
           onChange={handleFileSelect}
           aria-hidden
+          disabled={!canAttach || uploadingFiles.length > 0}
         />
-        <button
-          type="button"
-          className="attach-btn"
-          aria-label="Прикрепить файл"
-          title="Прикрепить файл (фото, видео, документ)"
-          onClick={() => {
-            if (!canAttach) {
-              setUploadError('Сначала выберите чат слева');
-              return;
-            }
-            fileInputRef.current?.click();
-          }}
-          disabled={uploadingFiles.length > 0}
-        >
-          📎
-        </button>
+        {canAttach && uploadingFiles.length === 0 ? (
+          <label htmlFor="attach-file-input" className="attach-btn" title="Прикрепить файл (фото, видео, документ)">
+            📎
+          </label>
+        ) : (
+          <button
+            type="button"
+            className="attach-btn"
+            aria-label="Прикрепить файл"
+            title="Прикрепить файл (фото, видео, документ)"
+            disabled={uploadingFiles.length > 0}
+            onClick={() => setUploadError('Сначала выберите чат слева')}
+          >
+            📎
+          </button>
+        )}
         <input
           ref={messageInputRef}
           id="message-input"
