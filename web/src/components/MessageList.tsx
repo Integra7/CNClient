@@ -301,7 +301,16 @@ function VoiceMessagePlayer({
         onClick={togglePlay}
         aria-label={isPlaying ? 'Пауза' : 'Воспроизвести'}
       >
-        {isPlaying ? '⏸' : '▶'}
+        {isPlaying ? (
+          <svg className="voice-play-btn-icon" viewBox="0 0 24 24" aria-hidden>
+            <rect x="6" y="4" width="4" height="16" rx="1.5" fill="currentColor" />
+            <rect x="14" y="4" width="4" height="16" rx="1.5" fill="currentColor" />
+          </svg>
+        ) : (
+          <svg className="voice-play-btn-icon" viewBox="0 0 24 24" aria-hidden>
+            <path d="M8 5.14v13.72c0 .9 1.02 1.44 1.73.87l11.2-6.86c.78-.48.78-1.58 0-2.06L9.73 4.27C9.02 3.7 8 4.24 8 5.14z" fill="currentColor" />
+          </svg>
+        )}
       </button>
       <div className="voice-waveform-wrap">
         <div className="voice-waveform" aria-hidden>

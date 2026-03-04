@@ -544,12 +544,12 @@ export function ChatPanel({ chatIds }: ChatPanelProps) {
           >
             {previewPlaying ? (
               <svg className="voice-preview-icon" viewBox="0 0 24 24" aria-hidden>
-                <rect x="6" y="4" width="4" height="16" rx="1" fill="currentColor" />
-                <rect x="14" y="4" width="4" height="16" rx="1" fill="currentColor" />
+                <rect x="6" y="4" width="4" height="16" rx="1.5" fill="currentColor" />
+                <rect x="14" y="4" width="4" height="16" rx="1.5" fill="currentColor" />
               </svg>
             ) : (
               <svg className="voice-preview-icon" viewBox="0 0 24 24" aria-hidden>
-                <path d="M8 5v14l11-7z" fill="currentColor" />
+                <path d="M8 5.14v13.72c0 .9 1.02 1.44 1.73.87l11.2-6.86c.78-.48.78-1.58 0-2.06L9.73 4.27C9.02 3.7 8 4.24 8 5.14z" fill="currentColor" />
               </svg>
             )}
           </button>
@@ -590,12 +590,17 @@ export function ChatPanel({ chatIds }: ChatPanelProps) {
             title="Голосовое сообщение"
             onClick={startVoiceRecording}
           >
-            🎤
+            <svg className="btn-icon btn-icon-mic" viewBox="0 0 24 24" aria-hidden>
+              <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z" fill="currentColor" />
+              <path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z" fill="currentColor" />
+            </svg>
           </button>
         ) : null}
         {canAttach && uploadingFiles.length === 0 && voiceState === 'idle' ? (
           <label htmlFor="attach-file-input" className="attach-btn" title="Прикрепить файл (фото, видео, документ)">
-            📎
+            <svg className="btn-icon btn-icon-attach" viewBox="0 0 24 24" aria-hidden>
+              <path d="M16.5 6v11.5c0 2.21-1.79 4-4 4s-4-1.79-4-4V5c0-1.38 1.12-2.5 2.5-2.5s2.5 1.12 2.5 2.5v10.5c0 .55-.45 1-1 1s-1-.45-1-1V6H10v9.5c0 1.38 1.12 2.5 2.5 2.5s2.5-1.12 2.5-2.5V5c0-2.21-1.79-4-4-4S7 2.79 7 5v12.5c0 3.04 2.46 5.5 5.5 5.5s5.5-2.46 5.5-5.5V6h-1.5z" fill="currentColor" />
+            </svg>
           </label>
         ) : voiceState === 'idle' ? (
           <button
@@ -606,7 +611,9 @@ export function ChatPanel({ chatIds }: ChatPanelProps) {
             disabled={uploadingFiles.length > 0}
             onClick={() => setUploadError('Сначала выберите чат слева')}
           >
-            📎
+            <svg className="btn-icon btn-icon-attach" viewBox="0 0 24 24" aria-hidden>
+              <path d="M16.5 6v11.5c0 2.21-1.79 4-4 4s-4-1.79-4-4V5c0-1.38 1.12-2.5 2.5-2.5s2.5 1.12 2.5 2.5v10.5c0 .55-.45 1-1 1s-1-.45-1-1V6H10v9.5c0 1.38 1.12 2.5 2.5 2.5s2.5-1.12 2.5-2.5V5c0-2.21-1.79-4-4-4S7 2.79 7 5v12.5c0 3.04 2.46 5.5 5.5 5.5s5.5-2.46 5.5-5.5V6h-1.5z" fill="currentColor" />
+            </svg>
           </button>
         ) : null}
         <input
