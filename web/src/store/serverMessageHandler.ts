@@ -21,7 +21,7 @@ function parseAttachments(attachmentsJson: string | null | undefined): Attachmen
         resourceType: String(o.resourceType ?? 'raw'),
         width: o.width != null ? Number(o.width) : undefined,
         height: o.height != null ? Number(o.height) : undefined,
-        duration: o.duration != null ? Number(o.duration) : undefined,
+        duration: o.duration != null && Number.isFinite(Number(o.duration)) ? Number(o.duration) : undefined,
         createdAt: Number(o.createdAt ?? 0),
         isVoiceMessage: Boolean(o.isVoiceMessage),
       };

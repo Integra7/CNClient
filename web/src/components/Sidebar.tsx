@@ -11,13 +11,14 @@ function lastMessageAttachmentKind(last: DisplayMessage): 'image' | 'voice' | nu
   return null;
 }
 
-/** Если превью с сервера — сырой JSON с вложениями, определяем тип по первому вложению (голос/картинка). isJsonAttachment = true если это точно JSON с attachments. */
+/** Если превью с сервера — сырой JSON с вложениями, определяем тип. Работает и с обрезанным JSON (превью может быть укорочено). */
 function parsePreviewAttachmentKind(
   text: string | undefined
 ): { kind: 'image' | 'voice' | null; isJsonAttachment: boolean } {
   if (!text || typeof text !== 'string') return { kind: null, isJsonAttachment: false };
   const t = text.trim();
   if (!t.startsWith('{') || !t.includes('"attachments"')) return { kind: null, isJsonAttachment: false };
+
   try {
     const data = JSON.parse(t) as { attachments?: Array<{ isVoiceMessage?: boolean; resourceType?: string }> };
     const arr = data.attachments;
@@ -27,7 +28,10 @@ function parsePreviewAttachmentKind(
     if (first?.resourceType === 'image') return { kind: 'image', isJsonAttachment: true };
     return { kind: null, isJsonAttachment: true };
   } catch {
-    return { kind: null, isJsonAttachment: false };
+    /* Обрезанный JSON с сервера не парсится — определяем тип по подстрокам */
+    if (/\"isVoiceMessage\"\s*:\s*true/.test(t)) return { kind: 'voice', isJsonAttachment: true };
+    if (/\"resourceType\"\s*:\s*\"image\"/.test(t)) return { kind: 'image', isJsonAttachment: true };
+    return { kind: null, isJsonAttachment: true };
   }
 }
 

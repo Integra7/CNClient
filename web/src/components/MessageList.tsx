@@ -209,6 +209,7 @@ export function MessageList({ chatId, isCompose }: MessageListProps) {
 const REPLY_PREVIEW_MAX_LEN = 50;
 
 function formatVoiceTime(seconds: number): string {
+  if (!Number.isFinite(seconds) || seconds < 0) return '0:00';
   const m = Math.floor(seconds / 60);
   const s = Math.floor(seconds % 60);
   return `${m}:${s.toString().padStart(2, '0')}`;
@@ -228,13 +229,17 @@ function VoiceMessagePlayer({
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
-  const [duration, setDuration] = useState(attachment.duration ?? 0);
+  const safeDuration = Number.isFinite(attachment.duration) && attachment.duration! >= 0 ? attachment.duration! : 0;
+  const [duration, setDuration] = useState(safeDuration);
 
   useEffect(() => {
     const audio = new Audio(attachment.url);
     audioRef.current = audio;
 
-    const onLoadedMetadata = () => setDuration(audio.duration);
+    const onLoadedMetadata = () => {
+      const d = audio.duration;
+      if (Number.isFinite(d) && d >= 0) setDuration(d);
+    };
     const onTimeUpdate = () => setCurrentTime(audio.currentTime);
     const onEnded = () => {
       setIsPlaying(false);
@@ -245,7 +250,7 @@ function VoiceMessagePlayer({
     audio.addEventListener('loadedmetadata', onLoadedMetadata);
     audio.addEventListener('timeupdate', onTimeUpdate);
     audio.addEventListener('ended', onEnded);
-    if (attachment.duration != null) setDuration(attachment.duration);
+    if (safeDuration > 0) setDuration(safeDuration);
 
     return () => {
       audio.pause();
