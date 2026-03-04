@@ -737,7 +737,7 @@ h1 {
 }
 .call-incoming-actions {
   display: flex;
-  gap: 12px;
+  gap: 16px;
   justify-content: center;
   flex-wrap: wrap;
 }
@@ -750,6 +750,27 @@ h1 {
   font-weight: 500;
   cursor: pointer;
   border: none;
+}
+.call-btn-icon-only {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  padding: 0;
+  border-radius: 50%;
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+.call-btn-icon-only:hover {
+  transform: scale(1.05);
+}
+.call-btn-icon-only .call-action-icon {
+  width: 26px;
+  height: 26px;
+}
+.call-incoming-actions .call-btn-icon-only .call-action-icon {
+  width: 28px;
+  height: 28px;
 }
 .call-btn-accept {
   background: var(--success);
@@ -837,19 +858,13 @@ h1 {
 .call-btn-mute.muted:hover {
   background: rgba(248, 113, 113, 0.3);
 }
-.call-active-bar .call-btn-hangup {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 8px 14px;
-  font-size: 0.85rem;
-}
-.call-hangup-text {
-  font-family: var(--font-sans);
+.call-active-bar .call-btn-hangup.call-btn-icon-only {
+  width: 40px;
+  height: 40px;
 }
 .call-active-bar .call-btn-hangup .call-action-icon {
-  width: 18px;
-  height: 18px;
+  width: 20px;
+  height: 20px;
 }
 .call-outgoing-bar .call-btn-hangup {
   padding: 8px 16px;

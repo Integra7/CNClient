@@ -104,24 +104,24 @@ export function createServerMessageHandler(
       callType === 'call_rejected' ||
       callType === 'call_hangup' ||
       callType === 'call_hangup_ok' ||
-      callType === 'call_ice'
+      callType === 'call_media'
     ) {
-      if (callType === 'call_offer' && msg.callId && msg.callerId != null && msg.callerUsername != null && msg.sdp) {
+      if (callType === 'call_offer' && msg.callId && msg.callerId != null && msg.callerUsername != null) {
         dispatch({
           type: 'CALL_INCOMING',
           payload: {
             callId: msg.callId,
             callerId: msg.callerId,
             callerUsername: msg.callerUsername,
-            sdp: msg.sdp,
+            sdp: msg.sdp ?? '',
           },
         });
       } else if (callType === 'call_offer_sent' && msg.callId) {
         dispatch({ type: 'CALL_OFFER_SENT', payload: { callId: msg.callId } });
         callManager?.handleServerMessage('call_offer_sent', { callId: msg.callId });
-      } else if (callType === 'call_answer' && msg.callId && msg.sdp) {
-        dispatch({ type: 'CALL_ANSWER', payload: { callId: msg.callId, sdp: msg.sdp } });
-        callManager?.handleServerMessage('call_answer', { callId: msg.callId, sdp: msg.sdp });
+      } else if (callType === 'call_answer' && msg.callId) {
+        dispatch({ type: 'CALL_ANSWER', payload: { callId: msg.callId, sdp: '' } });
+        callManager?.handleServerMessage('call_answer', { callId: msg.callId });
       } else if (callType === 'call_answer_sent' && msg.callId) {
         dispatch({ type: 'CALL_ANSWER_SENT', payload: { callId: msg.callId } });
       } else if (callType === 'call_rejected' && msg.callId) {
@@ -133,8 +133,8 @@ export function createServerMessageHandler(
       } else if (callType === 'call_hangup_ok' && msg.callId) {
         dispatch({ type: 'CALL_HANGUP_OK', payload: { callId: msg.callId } });
         callManager?.handleServerMessage('call_hangup_ok', { callId: msg.callId });
-      } else if (callType === 'call_ice' && msg.callId && msg.iceCandidate) {
-        callManager?.handleServerMessage('call_ice', { callId: msg.callId, iceCandidate: msg.iceCandidate });
+      } else if (callType === 'call_media' && msg.callId != null && msg.content !== undefined) {
+        callManager?.handleServerMessage('call_media', { callId: msg.callId, content: msg.content });
       }
       return;
     }

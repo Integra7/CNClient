@@ -43,9 +43,10 @@ export interface ClientMessage {
   chatId?: string;
   content?: string;
   clientMessageId?: string;
-  /** Звонки: для call_offer, call_answer, call_reject, call_hangup, call_ice */
+  /** Звонки: call_offer (calleeId), call_answer/call_reject/call_hangup (callId), call_media (callId + content base64) */
   callId?: string | null;
   calleeId?: string | null;
+  /** Relay-режим: не используется. Оставлено для совместимости. */
   sdp?: string | null;
   iceCandidate?: string | null;
 }
@@ -60,7 +61,7 @@ export interface ServerMessage {
   sequenceNumber?: number;
   timestamp?: number;
   error?: string;
-  /** Звонки */
+  /** Звонки; call_media приходит с callId и content (base64 аудио) */
   callId?: string;
   callerId?: string;
   callerUsername?: string;
