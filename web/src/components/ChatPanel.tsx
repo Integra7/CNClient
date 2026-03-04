@@ -66,6 +66,15 @@ export function ChatPanel({ chatIds }: ChatPanelProps) {
     const replyingToIds = state.replyingToMessageIds;
 
     if (replyingToIds.length > 0) {
+      const othersToReply = replyingToIds
+        .map((id) => list.find((m) => m.id === id))
+        .filter((m): m is NonNullable<typeof m> => m != null && !m.isOwn)
+        .sort((a, b) => a.timestamp - b.timestamp);
+      if (othersToReply.length === 0) {
+        dispatch({ type: 'SET_REPLYING_TO', payload: null });
+        return;
+      }
+      const messageIdsToSend = othersToReply.map((m) => m.id);
       dispatch({
         type: 'ADD_PENDING',
         payload: {
@@ -76,17 +85,13 @@ export function ChatPanel({ chatIds }: ChatPanelProps) {
           sentAt: Date.now(),
         },
       });
-      const replyTo: ReplyToMessage[] = replyingToIds
-        .map((id) => list.find((m) => m.id === id))
-        .filter((m): m is NonNullable<typeof m> => m != null)
-        .sort((a, b) => a.timestamp - b.timestamp)
-        .map((m) => ({
-          messageId: m.id,
-          senderId: m.senderId,
-          senderName: m.senderUsername ?? shortId(m.senderId),
-          content: m.content,
-          timestamp: m.timestamp,
-        }));
+      const replyTo: ReplyToMessage[] = othersToReply.map((m) => ({
+        messageId: m.id,
+        senderId: m.senderId,
+        senderName: m.senderUsername ?? shortId(m.senderId),
+        content: m.content,
+        timestamp: m.timestamp,
+      }));
       const newMsg = {
         id: clientMessageId,
         clientMessageId,
@@ -107,7 +112,7 @@ export function ChatPanel({ chatIds }: ChatPanelProps) {
       });
       dispatch({ type: 'SET_REPLYING_TO', payload: null });
       dispatch({ type: 'CLEAR_SELECTION' });
-      wsClientRef.current.replyToMessages(selectedChatId, replyingToIds, content, clientMessageId);
+      wsClientRef.current.replyToMessages(selectedChatId, messageIdsToSend, content, clientMessageId);
       if (input) input.value = '';
       return;
     }

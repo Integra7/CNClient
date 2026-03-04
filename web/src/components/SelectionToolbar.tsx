@@ -11,6 +11,11 @@ export function SelectionToolbar() {
   const singleMsg = singleId ? list.find((m) => m.id === singleId) : null;
   const showEdit =
     state.selectedMessageIds.length === 1 && singleMsg?.isOwn === true;
+  /** Ответить можно только на чужие сообщения */
+  const selectedOthersIds = state.selectedMessageIds.filter(
+    (id) => !list.find((m) => m.id === id)?.isOwn
+  );
+  const canReply = selectedOthersIds.length > 0;
 
   if (!hasSelection) {
     return (
@@ -32,8 +37,8 @@ export function SelectionToolbar() {
   };
 
   const startReply = () => {
-    if (!state.selectedMessageIds.length || !selectedChatId) return;
-    dispatch({ type: 'SET_REPLYING_TO', payload: state.selectedMessageIds });
+    if (!selectedChatId || selectedOthersIds.length === 0) return;
+    dispatch({ type: 'SET_REPLYING_TO', payload: selectedOthersIds });
   };
 
   const openEditModal = () => {
@@ -68,7 +73,12 @@ export function SelectionToolbar() {
         <button type="button" onClick={openForwardModal}>
           Переслать
         </button>
-        <button type="button" onClick={startReply}>
+        <button
+          type="button"
+          onClick={startReply}
+          disabled={!canReply}
+          title={canReply ? undefined : 'Можно отвечать только на сообщения других'}
+        >
           Ответить
         </button>
         <button
