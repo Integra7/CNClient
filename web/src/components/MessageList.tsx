@@ -16,6 +16,22 @@ function groupKey(m: DisplayMessage): string | null {
   return `ts:${m.timestamp}`;
 }
 
+/** Если content — это JSON с вложениями ({ text?, attachments }), возвращаем только текст для отображения; иначе сам content */
+function getDisplayText(content: string): string {
+  if (!content || typeof content !== 'string') return '';
+  const trimmed = content.trim();
+  if (trimmed === '') return '';
+  if (trimmed.startsWith('{') && trimmed.includes('"attachments"')) {
+    try {
+      const data = JSON.parse(content) as { text?: string; attachments?: unknown[] };
+      if (Array.isArray(data.attachments)) return (data.text ?? '').trim();
+    } catch {
+      // не JSON или битый — показываем как есть
+    }
+  }
+  return content;
+}
+
 export function MessageList({ chatId, isCompose }: MessageListProps) {
   const { state, dispatch } = useApp();
   const containerRef = useRef<HTMLDivElement>(null);
@@ -339,13 +355,14 @@ function MessageBubble({
     ) : null;
 
   const className = `message ${m.isOwn ? 'own' : 'other'}${isUnread ? ' unread' : ''}${!insideBlock && selected ? ' selected' : ''}`;
+  const displayText = getDisplayText(m.content);
 
   const content = (
     <>
       {replyPreview}
       {forwardLines}
       {attachmentsBlock}
-      {m.content ? <span className="content">{escapeHtml(m.content)}</span> : null}
+      {displayText ? <span className="content">{escapeHtml(displayText)}</span> : null}
       {!insideBlock ? (
         <span className="meta-row">
           <span className="meta">
