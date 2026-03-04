@@ -1,6 +1,15 @@
 import { useRef, useEffect, useCallback } from 'react';
 import { useApp } from '../context/AppContext';
+import type { DisplayMessage } from '../types';
 import { shortId, formatChatListTime } from '../utils/format';
+
+function lastMessageAttachmentKind(last: DisplayMessage): 'image' | 'voice' | null {
+  const att = last.attachments;
+  if (!att?.length) return null;
+  if (att.some((a) => a.isVoiceMessage)) return 'voice';
+  if (att.some((a) => a.resourceType === 'image')) return 'image';
+  return null;
+}
 
 const FIND_USER_DEBOUNCE_MS = 1000;
 
@@ -126,17 +135,22 @@ export function Sidebar({ chatIds }: SidebarProps) {
           const last = list.length > 0 ? list[list.length - 1] : undefined;
           const serverLastTime = state.chatLastMessageTime[chatId];
           const savedPreview = state.chatLastMessagePreview[chatId];
-          const rawPreview = last
-            ? last.content.slice(0, 30) + (last.content.length > 30 ? '…' : '')
-            : savedPreview
-              ? savedPreview.text
-              : serverLastTime
-                ? 'Сообщение'
-                : 'Нет сообщений';
-          const preview =
-            last ? (last.isOwn ? `Вы: ${rawPreview}` : rawPreview)
-            : savedPreview ? (savedPreview.isOwn ? `Вы: ${rawPreview}` : rawPreview)
-            : rawPreview;
+          const kind = last ? lastMessageAttachmentKind(last) : (savedPreview?.attachmentKind ?? null);
+          const rawPreview =
+            kind === 'voice'
+              ? null
+              : kind === 'image'
+                ? 'Изображение'
+                : last
+                  ? last.content.slice(0, 30) + (last.content.length > 30 ? '…' : '')
+                  : savedPreview?.text ?? (serverLastTime ? 'Сообщение' : 'Нет сообщений');
+          const isOwn = last?.isOwn ?? savedPreview?.isOwn ?? false;
+          const previewText =
+            rawPreview != null
+              ? (isOwn ? `Вы: ${rawPreview}` : rawPreview)
+              : kind === 'voice'
+                ? (isOwn ? 'Вы: ' : '')
+                : '';
           const timeStr = last
             ? formatChatListTime(last.timestamp)
             : serverLastTime
@@ -169,7 +183,19 @@ export function Sidebar({ chatIds }: SidebarProps) {
                 {unreadBadge}
               </span>
               <span className="chat-preview-row">
-                <span className="chat-preview">{preview}</span>
+                {kind === 'voice' ? (
+                  <span className="chat-preview chat-preview-voice">
+                    {previewText}
+                    <svg className="chat-preview-mic-icon" viewBox="0 0 24 24" aria-hidden>
+                      <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z" fill="currentColor" />
+                      <path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z" fill="currentColor" />
+                    </svg>
+                  </span>
+                ) : kind === 'image' ? (
+                  <span className="chat-preview chat-preview-image">{previewText}</span>
+                ) : (
+                  <span className="chat-preview">{previewText}</span>
+                )}
                 <span className="chat-time">{timeStr}</span>
               </span>
             </li>

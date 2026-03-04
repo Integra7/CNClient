@@ -194,12 +194,12 @@ export function appReducer(state: AppState, action: AppAction): AppState {
         },
       };
     case 'SET_CHAT_LAST_MESSAGE_PREVIEW': {
-      const { chatId, text, isOwn } = action.payload;
+      const { chatId, text, isOwn, attachmentKind } = action.payload;
       return {
         ...state,
         chatLastMessagePreview: {
           ...state.chatLastMessagePreview,
-          [chatId]: { text, isOwn },
+          [chatId]: { text, isOwn, attachmentKind },
         },
       };
     }

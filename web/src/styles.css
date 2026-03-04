@@ -570,6 +570,23 @@ h1 {
   text-overflow: ellipsis;
 }
 
+#chat-list .chat-preview-voice {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+#chat-list .chat-preview-mic-icon {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+  color: var(--text-muted);
+}
+
+#chat-list .chat-preview-image {
+  font-style: italic;
+}
+
 #chat-list .chat-time {
   flex-shrink: 0;
   font-size: 11px;
@@ -1501,6 +1518,31 @@ h1 {
 
 .voice-recording-stop:hover {
   background: rgba(167, 139, 250, 0.2);
+}
+
+.voice-recorded-strip .voice-preview-play-btn {
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: none;
+  background: var(--accent);
+  color: #fff;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  transition: opacity 0.15s;
+}
+
+.voice-recorded-strip .voice-preview-play-btn:hover {
+  opacity: 0.9;
+}
+
+.voice-recorded-strip .voice-preview-icon {
+  width: 20px;
+  height: 20px;
 }
 
 .voice-recorded-label {

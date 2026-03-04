@@ -31,6 +31,13 @@ function parseAttachments(attachmentsJson: string | null | undefined): Attachmen
   }
 }
 
+function getAttachmentKind(attachments: AttachmentResponse[] | undefined): 'image' | 'voice' | null {
+  if (!attachments?.length) return null;
+  if (attachments.some((a) => a.isVoiceMessage)) return 'voice';
+  if (attachments.some((a) => a.resourceType === 'image')) return 'image';
+  return null;
+}
+
 function parseReplyToData(replyToData: string | null | undefined): ReplyToMessage[] | undefined {
   if (replyToData == null || replyToData === '') return undefined;
   try {
@@ -252,9 +259,10 @@ export function createServerMessageHandler(
           const lastM = merged[merged.length - 1];
           if (lastM) {
             const raw = lastM.content.slice(0, 30) + (lastM.content.length > 30 ? '…' : '');
+            const attachmentKind = getAttachmentKind(lastM.attachments);
             dispatch({
               type: 'SET_CHAT_LAST_MESSAGE_PREVIEW',
-              payload: { chatId: msg.chatId, text: raw, isOwn: lastM.isOwn },
+              payload: { chatId: msg.chatId, text: raw, isOwn: lastM.isOwn, attachmentKind },
             });
           }
           dispatch({ type: 'RECOMPUTE_UNREAD' });
@@ -376,9 +384,10 @@ export function createServerMessageHandler(
           payload: { chatId: msg.chatId, time: newMsg.timestamp },
         });
         const rawPreview = newMsg.content.slice(0, 30) + (newMsg.content.length > 30 ? '…' : '');
+        const attachmentKind = getAttachmentKind(newMsg.attachments);
         dispatch({
           type: 'SET_CHAT_LAST_MESSAGE_PREVIEW',
-          payload: { chatId: msg.chatId, text: rawPreview, isOwn: newMsg.isOwn },
+          payload: { chatId: msg.chatId, text: rawPreview, isOwn: newMsg.isOwn, attachmentKind },
         });
 
         if (msg.senderId !== currentUserId) {

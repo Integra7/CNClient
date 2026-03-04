@@ -30,6 +30,9 @@ export function ChatPanel({ chatIds }: ChatPanelProps) {
   const voiceStreamRef = useRef<MediaStream | null>(null);
   const recordTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const recordElapsedRef = useRef(0);
+  const [previewPlaying, setPreviewPlaying] = useState(false);
+  const previewAudioRef = useRef<HTMLAudioElement | null>(null);
+  const previewObjectUrlRef = useRef<string | null>(null);
 
   const selectedChatId = state.selectedChatId;
   const composeToUsername = state.composeToUsername;
@@ -174,7 +177,42 @@ export function ChatPanel({ chatIds }: ChatPanelProps) {
     }
   }, []);
 
+  const stopPreview = useCallback(() => {
+    if (previewAudioRef.current) {
+      previewAudioRef.current.pause();
+      previewAudioRef.current.src = '';
+      previewAudioRef.current = null;
+    }
+    if (previewObjectUrlRef.current) {
+      URL.revokeObjectURL(previewObjectUrlRef.current);
+      previewObjectUrlRef.current = null;
+    }
+    setPreviewPlaying(false);
+  }, []);
+
+  useEffect(() => {
+    if (voiceState !== 'recorded' || !recordedBlob) {
+      stopPreview();
+    }
+  }, [voiceState, recordedBlob, stopPreview]);
+
+  const toggleVoicePreview = useCallback(() => {
+    if (!recordedBlob) return;
+    if (previewPlaying) {
+      stopPreview();
+      return;
+    }
+    const url = URL.createObjectURL(recordedBlob);
+    previewObjectUrlRef.current = url;
+    const audio = new Audio(url);
+    previewAudioRef.current = audio;
+    audio.onended = () => stopPreview();
+    audio.onerror = () => stopPreview();
+    audio.play().then(() => setPreviewPlaying(true)).catch(stopPreview);
+  }, [recordedBlob, previewPlaying, stopPreview]);
+
   const cancelVoiceMessage = useCallback(() => {
+    stopPreview();
     if (mediaRecorderRef.current?.state === 'recording') {
       mediaRecorderRef.current.stop();
       mediaRecorderRef.current = null;
@@ -187,10 +225,11 @@ export function ChatPanel({ chatIds }: ChatPanelProps) {
     setRecordDurationSec(0);
     setRecordElapsedSec(0);
     setVoiceState('idle');
-  }, [clearRecordTimer]);
+  }, [clearRecordTimer, stopPreview]);
 
   const sendVoiceMessage = useCallback(async () => {
     if (!recordedBlob || !selectedChatId || !wsClientRef.current?.connected || voiceState === 'uploading') return;
+    stopPreview();
     const validation = validateVoiceMessage(recordedBlob, recordDurationSec);
     if (!validation.valid) {
       setUploadError(validation.error ?? 'Ошибка валидации');
@@ -246,6 +285,7 @@ export function ChatPanel({ chatIds }: ChatPanelProps) {
     voiceState,
     dispatch,
     wsClientRef,
+    stopPreview,
   ]);
 
   const sendMessage = useCallback(() => {
@@ -495,6 +535,24 @@ export function ChatPanel({ chatIds }: ChatPanelProps) {
       ) : null}
       {voiceState === 'recorded' && recordedBlob ? (
         <div className="voice-recorded-strip">
+          <button
+            type="button"
+            className="voice-preview-play-btn"
+            onClick={toggleVoicePreview}
+            aria-label={previewPlaying ? 'Пауза' : 'Прослушать'}
+            title={previewPlaying ? 'Пауза' : 'Прослушать перед отправкой'}
+          >
+            {previewPlaying ? (
+              <svg className="voice-preview-icon" viewBox="0 0 24 24" aria-hidden>
+                <rect x="6" y="4" width="4" height="16" rx="1" fill="currentColor" />
+                <rect x="14" y="4" width="4" height="16" rx="1" fill="currentColor" />
+              </svg>
+            ) : (
+              <svg className="voice-preview-icon" viewBox="0 0 24 24" aria-hidden>
+                <path d="M8 5v14l11-7z" fill="currentColor" />
+              </svg>
+            )}
+          </button>
           <span className="voice-recorded-label">Голосовое {formatDuration(recordDurationSec)}</span>
           <button type="button" className="voice-send-btn" onClick={sendVoiceMessage}>
             Отправить
