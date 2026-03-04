@@ -1,3 +1,39 @@
+/** Вложение для отправки (после загрузки в Cloudinary) */
+export interface AttachmentRequest {
+  publicId: string;
+  url: string;
+  thumbnailUrl?: string;
+  fileName: string;
+  fileType: string;
+  fileSize: number;
+  resourceType: string;
+  width?: number;
+  height?: number;
+  duration?: number;
+}
+
+/** Вложение из ответа сервера */
+export interface AttachmentResponse {
+  id: string;
+  publicId: string;
+  url: string;
+  thumbnailUrl?: string;
+  fileName: string;
+  fileType: string;
+  fileSize: number;
+  resourceType: string;
+  width?: number;
+  height?: number;
+  duration?: number;
+  createdAt: number;
+}
+
+/** Контент сообщения при отправке с вложениями */
+export interface MessageContentWithAttachments {
+  text?: string;
+  attachments: AttachmentRequest[];
+}
+
 export interface ClientMessage {
   type: string;
   chatId?: string;
@@ -50,8 +86,9 @@ export interface DisplayMessage {
   editedAt?: number;
   forwardFrom?: { senderId: string; senderName: string; originalTimestamp?: number };
   forwardBatchId?: string;
-  /** Сообщения, на которые отвечает это сообщение */
   replyTo?: ReplyToMessage[];
+  /** Вложения (из поля attachments сервера) */
+  attachments?: AttachmentResponse[];
 }
 
 export interface CreateUserPayload {
@@ -97,4 +134,6 @@ export interface MessageFromServer {
   forwardBatchId?: string | null;
   /** JSON-строка массива ReplyToMessage — сообщения, на которые отвечают */
   replyToData?: string | null;
+  /** JSON-строка массива вложений (AttachmentResponse[]) */
+  attachments?: string | null;
 }

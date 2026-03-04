@@ -11,6 +11,13 @@ const getBackendUrl = (): string => {
 
 export const WS_URL = getBackendUrl();
 
+/** HTTP URL бэкенда для REST (upload signature и т.д.) */
+export function getBackendHttpUrl(): string {
+  const ws = getBackendUrl();
+  const u = ws.replace(/^ws/, 'http').replace(/^wss/, 'https');
+  return u.replace(/\/chat\/?$/, '');
+}
+
 export const ACK_TIMEOUT_MS = 5000;
 export const PING_INTERVAL_MS = 30000;
 export const RECONNECT_DELAY_MS = 2000;

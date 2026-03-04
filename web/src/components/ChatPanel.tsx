@@ -1,9 +1,10 @@
-import { useEffect, useRef, useCallback } from 'react';
+import { useEffect, useRef, useCallback, useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { shortId } from '../utils/format';
-import type { ReplyToMessage } from '../types';
+import type { ReplyToMessage, AttachmentRequest, AttachmentResponse } from '../types';
 import { MessageList } from './MessageList';
 import { SelectionToolbar } from './SelectionToolbar';
+import { validateFile, uploadFiles } from '../utils/upload';
 
 interface ChatPanelProps {
   chatIds: string[];
@@ -12,9 +13,14 @@ interface ChatPanelProps {
 export function ChatPanel({ chatIds }: ChatPanelProps) {
   const { state, dispatch, wsClientRef } = useApp();
   const messageInputRef = useRef<HTMLInputElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [pendingAttachments, setPendingAttachments] = useState<AttachmentRequest[]>([]);
+  const [uploadProgress, setUploadProgress] = useState<{ fileIndex: number; percent: number } | null>(null);
+  const [uploadError, setUploadError] = useState<string | null>(null);
 
   const selectedChatId = state.selectedChatId;
   const composeToUsername = state.composeToUsername;
+  const canAttach = !!selectedChatId && !composeToUsername;
 
   useEffect(() => {
     if (state.connectionState === 'connected' && selectedChatId) {
@@ -39,10 +45,44 @@ export function ChatPanel({ chatIds }: ChatPanelProps) {
       ? `@${composeToUsername}`
       : '';
 
+  const handleFileSelect = useCallback(
+    async (e: React.ChangeEvent<HTMLInputElement>) => {
+      const files = e.target.files;
+      if (!files?.length || !canAttach) return;
+      e.target.value = '';
+      setUploadError(null);
+      const fileList = Array.from(files);
+      for (const file of fileList) {
+        const v = validateFile(file);
+        if (!v.valid) {
+          setUploadError(v.error ?? 'Ошибка валидации');
+          return;
+        }
+      }
+      setUploadProgress({ fileIndex: 0, percent: 0 });
+      try {
+        const uploaded = await uploadFiles(fileList, (fileIndex, percent) => {
+          setUploadProgress({ fileIndex, percent });
+        });
+        setPendingAttachments((prev) => [...prev, ...uploaded]);
+      } catch (err) {
+        setUploadError(err instanceof Error ? err.message : 'Ошибка загрузки');
+      } finally {
+        setUploadProgress(null);
+      }
+    },
+    [canAttach]
+  );
+
+  const removePendingAttachment = useCallback((index: number) => {
+    setPendingAttachments((prev) => prev.filter((_, i) => i !== index));
+  }, []);
+
   const sendMessage = useCallback(() => {
     const input = messageInputRef.current;
-    const content = input?.value.trim();
-    if (!content || !wsClientRef.current?.connected) return;
+    const content = input?.value.trim() ?? '';
+    const hasAttachments = pendingAttachments.length > 0;
+    if ((!content && !hasAttachments) || !wsClientRef.current?.connected) return;
     const clientMessageId = crypto.randomUUID();
 
     if (composeToUsername && !selectedChatId) {
@@ -117,25 +157,41 @@ export function ChatPanel({ chatIds }: ChatPanelProps) {
       return;
     }
 
+    const displayContent = content || (hasAttachments ? 'Вложение' : '');
     dispatch({
       type: 'ADD_PENDING',
       payload: {
         clientMessageId,
-        content,
+        content: displayContent,
         chatId: selectedChatId,
         status: 'sending',
         sentAt: Date.now(),
       },
     });
+    const attachmentsForDisplay: AttachmentResponse[] = pendingAttachments.map((a) => ({
+      id: a.publicId,
+      publicId: a.publicId,
+      url: a.url,
+      thumbnailUrl: a.thumbnailUrl,
+      fileName: a.fileName,
+      fileType: a.fileType,
+      fileSize: a.fileSize,
+      resourceType: a.resourceType,
+      width: a.width,
+      height: a.height,
+      duration: a.duration,
+      createdAt: Date.now(),
+    }));
     const newMsg = {
       id: clientMessageId,
       clientMessageId,
       chatId: selectedChatId,
       senderId: state.currentUserId,
-      content,
+      content: content || '',
       timestamp: Date.now(),
       status: 'sending' as const,
       isOwn: true,
+      attachments: attachmentsForDisplay.length > 0 ? attachmentsForDisplay : undefined,
     };
     dispatch({
       type: 'MERGE_MESSAGES',
@@ -144,7 +200,17 @@ export function ChatPanel({ chatIds }: ChatPanelProps) {
         messages: [...list, newMsg].sort((a, b) => a.timestamp - b.timestamp),
       },
     });
-    wsClientRef.current.sendMessage(selectedChatId, content, clientMessageId);
+    if (hasAttachments) {
+      wsClientRef.current.sendMessageWithAttachments(
+        selectedChatId,
+        content || undefined,
+        pendingAttachments,
+        clientMessageId
+      );
+      setPendingAttachments([]);
+    } else {
+      wsClientRef.current.sendMessage(selectedChatId, content, clientMessageId);
+    }
     if (input) input.value = '';
   }, [
     composeToUsername,
@@ -152,6 +218,7 @@ export function ChatPanel({ chatIds }: ChatPanelProps) {
     state.currentUserId,
     state.messagesByChat,
     state.replyingToMessageIds,
+    pendingAttachments,
     dispatch,
     wsClientRef,
   ]);
@@ -194,7 +261,64 @@ export function ChatPanel({ chatIds }: ChatPanelProps) {
           </button>
         </div>
       ) : null}
+      {uploadError ? (
+        <div className="upload-error">
+          <span>{uploadError}</span>
+          <button type="button" onClick={() => setUploadError(null)} aria-label="Закрыть">×</button>
+        </div>
+      ) : null}
+      {uploadProgress != null ? (
+        <div className="upload-progress">
+          <div className="upload-progress-bar" style={{ width: `${uploadProgress.percent}%` }} />
+          <span>Загрузка… {uploadProgress.percent}%</span>
+        </div>
+      ) : null}
+      {pendingAttachments.length > 0 ? (
+        <div className="pending-attachments">
+          {pendingAttachments.map((a, i) => (
+            <span key={a.publicId} className="pending-attachment-chip">
+              {a.resourceType === 'image' && a.thumbnailUrl ? (
+                <img src={a.thumbnailUrl} alt="" className="pending-attachment-thumb" />
+              ) : (
+                <span className="pending-attachment-icon">📎</span>
+              )}
+              <span className="pending-attachment-name" title={a.fileName}>
+                {a.fileName.length > 12 ? a.fileName.slice(0, 10) + '…' : a.fileName}
+              </span>
+              <button
+                type="button"
+                className="pending-attachment-remove"
+                aria-label="Удалить"
+                onClick={() => removePendingAttachment(i)}
+              >
+                ×
+              </button>
+            </span>
+          ))}
+        </div>
+      ) : null}
       <div className="send-row">
+        {canAttach ? (
+          <>
+            <input
+              ref={fileInputRef}
+              type="file"
+              multiple
+              accept=".jpg,.jpeg,.png,.gif,.webp,.mp4,.mov,.avi,.pdf,.doc,.docx,.txt,.zip,.rar,image/*,video/*"
+              className="file-input-hidden"
+              onChange={handleFileSelect}
+            />
+            <button
+              type="button"
+              className="attach-btn"
+              aria-label="Прикрепить файл"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={uploadProgress != null}
+            >
+              📎
+            </button>
+          </>
+        ) : null}
         <input
           ref={messageInputRef}
           id="message-input"

@@ -117,6 +117,26 @@ export class ChatWsClient {
     this.setAckTimeout(clientMessageId);
   }
 
+  sendMessageWithAttachments(
+    chatId: string,
+    text: string | undefined,
+    attachments: import('./types').AttachmentRequest[],
+    clientMessageId: string
+  ): void {
+    const content = JSON.stringify({
+      text: text || undefined,
+      attachments,
+    });
+    const msg: ClientMessage = {
+      type: 'message',
+      chatId,
+      content,
+      clientMessageId,
+    };
+    this.send(msg);
+    this.setAckTimeout(clientMessageId);
+  }
+
   private setAckTimeout(clientMessageId: string): void {
     this.clearAckTimeout(clientMessageId);
     const timer = setTimeout(() => {

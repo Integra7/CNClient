@@ -1,7 +1,34 @@
-import type { ServerMessage, DisplayMessage, MessageFromServer, ChatFromServer, ReplyToMessage } from '../types';
+import type { ServerMessage, DisplayMessage, MessageFromServer, ChatFromServer, ReplyToMessage, AttachmentResponse } from '../types';
 import type { AppState, AppAction } from './types';
 
 type Dispatch = (action: AppAction) => void;
+
+function parseAttachments(attachmentsJson: string | null | undefined): AttachmentResponse[] | undefined {
+  if (attachmentsJson == null || attachmentsJson === '') return undefined;
+  try {
+    const arr = JSON.parse(attachmentsJson) as unknown;
+    if (!Array.isArray(arr)) return undefined;
+    return arr.map((item: unknown) => {
+      const o = item as Record<string, unknown>;
+      return {
+        id: String(o.id ?? ''),
+        publicId: String(o.publicId ?? ''),
+        url: String(o.url ?? ''),
+        thumbnailUrl: o.thumbnailUrl != null ? String(o.thumbnailUrl) : undefined,
+        fileName: String(o.fileName ?? ''),
+        fileType: String(o.fileType ?? ''),
+        fileSize: Number(o.fileSize ?? 0),
+        resourceType: String(o.resourceType ?? 'raw'),
+        width: o.width != null ? Number(o.width) : undefined,
+        height: o.height != null ? Number(o.height) : undefined,
+        duration: o.duration != null ? Number(o.duration) : undefined,
+        createdAt: Number(o.createdAt ?? 0),
+      };
+    });
+  } catch {
+    return undefined;
+  }
+}
 
 function parseReplyToData(replyToData: string | null | undefined): ReplyToMessage[] | undefined {
   if (replyToData == null || replyToData === '') return undefined;
@@ -210,6 +237,7 @@ export function createServerMessageHandler(
                   ? m.forwardBatchId
                   : undefined,
               replyTo: parseReplyToData(sm.replyToData),
+              attachments: parseAttachments((sm as MessageFromServer & { attachments?: string | null }).attachments),
             });
           }
           const merged = [...list];
@@ -270,7 +298,7 @@ export function createServerMessageHandler(
       }
 
       case 'message': {
-        if (!msg.chatId || msg.senderId == null || msg.content == null) break;
+        if (!msg.chatId || msg.senderId == null) break;
         const extendedMsg = msg as ServerMessage & {
           senderUsername?: string;
           status?: string;
@@ -281,6 +309,7 @@ export function createServerMessageHandler(
           forwardFromTimestamp?: number | null;
           forwardBatchId?: string | null;
           replyToData?: string | null;
+          attachments?: string | null;
         };
         const list = state.messagesByChat[msg.chatId] ?? [];
         const existing = list.some(
@@ -312,7 +341,7 @@ export function createServerMessageHandler(
           chatId: msg.chatId,
           senderId: msg.senderId,
           senderUsername: extendedMsg.senderUsername ?? undefined,
-          content: msg.content,
+          content: msg.content ?? '',
           sequenceNumber: msg.sequenceNumber,
           timestamp: msg.timestamp ?? Date.now(),
           status: (extendedMsg.status === 'read' ||
@@ -328,6 +357,7 @@ export function createServerMessageHandler(
               ? extendedMsg.forwardBatchId
               : undefined,
           replyTo: parseReplyToData(extendedMsg.replyToData),
+          attachments: parseAttachments(extendedMsg.attachments),
         };
 
         dispatch({
@@ -345,10 +375,8 @@ export function createServerMessageHandler(
         });
 
         if (msg.senderId !== currentUserId) {
-          onNotify(
-            state.chatNames[msg.chatId] ?? 'Новое сообщение',
-            typeof msg.content === 'string' ? msg.content : ''
-          );
+          const preview = (msg.content && String(msg.content).trim()) || (newMsg.attachments?.length ? 'Вложение' : '');
+          onNotify(state.chatNames[msg.chatId] ?? 'Новое сообщение', preview);
           if (state.selectedChatId !== msg.chatId) {
             dispatch({ type: 'INCREMENT_UNREAD', payload: msg.chatId });
           } else if (state.selectedChatId === msg.chatId) {
