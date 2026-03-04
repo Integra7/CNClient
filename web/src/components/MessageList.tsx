@@ -32,6 +32,35 @@ function getDisplayText(content: string): string {
   return content;
 }
 
+/** Парсит вложения из content (JSON с attachments), если сервер не прислал отдельное поле attachments (например, при пересылке) */
+function parseAttachmentsFromContent(content: string | undefined): AttachmentResponse[] | undefined {
+  if (!content || typeof content !== 'string') return undefined;
+  const t = content.trim();
+  if (!t.startsWith('{') || !t.includes('"attachments"')) return undefined;
+  try {
+    const data = JSON.parse(content) as { attachments?: Array<Record<string, unknown>> };
+    const arr = data.attachments;
+    if (!Array.isArray(arr) || arr.length === 0) return undefined;
+    return arr.map((o, i) => ({
+      id: String(o.id ?? o.publicId ?? `att-${i}`),
+      publicId: String(o.publicId ?? ''),
+      url: String(o.url ?? ''),
+      thumbnailUrl: o.thumbnailUrl != null ? String(o.thumbnailUrl) : undefined,
+      fileName: String(o.fileName ?? ''),
+      fileType: String(o.fileType ?? ''),
+      fileSize: Number(o.fileSize ?? 0),
+      resourceType: String(o.resourceType ?? 'raw'),
+      width: o.width != null ? Number(o.width) : undefined,
+      height: o.height != null ? Number(o.height) : undefined,
+      duration: o.duration != null && Number.isFinite(Number(o.duration)) ? Number(o.duration) : undefined,
+      createdAt: Number(o.createdAt ?? 0),
+      isVoiceMessage: Boolean(o.isVoiceMessage),
+    }));
+  } catch {
+    return undefined;
+  }
+}
+
 export function MessageList({ chatId, isCompose }: MessageListProps) {
   const { state, dispatch } = useApp();
   const containerRef = useRef<HTMLDivElement>(null);
@@ -514,10 +543,11 @@ function MessageBubble({
     </div>
   );
 
+  const attachmentsResolved = (m.attachments?.length ? m.attachments : parseAttachmentsFromContent(m.content)) ?? [];
   const attachmentsBlock =
-    m.attachments && m.attachments.length > 0 ? (
+    attachmentsResolved.length > 0 ? (
       <div className="message-attachments">
-        {m.attachments.map((att) => (
+        {attachmentsResolved.map((att) => (
           <AttachmentDisplay
             key={att.id || att.publicId || att.url}
             attachment={att}

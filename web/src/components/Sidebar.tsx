@@ -3,36 +3,17 @@ import { useApp } from '../context/AppContext';
 import type { DisplayMessage } from '../types';
 import { shortId, formatChatListTime } from '../utils/format';
 
-function lastMessageAttachmentKind(last: DisplayMessage): 'image' | 'voice' | null {
-  const att = last.attachments;
-  if (!att?.length) return null;
-  if (att.some((a) => a.isVoiceMessage)) return 'voice';
-  if (att.some((a) => a.resourceType === 'image')) return 'image';
-  return null;
-}
-
-/** Если превью с сервера — сырой JSON с вложениями, определяем тип. Работает и с обрезанным JSON (превью может быть укорочено). */
-function parsePreviewAttachmentKind(
-  text: string | undefined
-): { kind: 'image' | 'voice' | null; isJsonAttachment: boolean } {
-  if (!text || typeof text !== 'string') return { kind: null, isJsonAttachment: false };
-  const t = text.trim();
-  if (!t.startsWith('{') || !t.includes('"attachments"')) return { kind: null, isJsonAttachment: false };
-
-  try {
-    const data = JSON.parse(t) as { attachments?: Array<{ isVoiceMessage?: boolean; resourceType?: string }> };
-    const arr = data.attachments;
-    if (!Array.isArray(arr) || arr.length === 0) return { kind: null, isJsonAttachment: true };
-    const first = arr[0];
-    if (first?.isVoiceMessage) return { kind: 'voice', isJsonAttachment: true };
-    if (first?.resourceType === 'image') return { kind: 'image', isJsonAttachment: true };
-    return { kind: null, isJsonAttachment: true };
-  } catch {
-    /* Обрезанный JSON с сервера не парсится — определяем тип по подстрокам */
-    if (/\"isVoiceMessage\"\s*:\s*true/.test(t)) return { kind: 'voice', isJsonAttachment: true };
-    if (/\"resourceType\"\s*:\s*\"image\"/.test(t)) return { kind: 'image', isJsonAttachment: true };
-    return { kind: null, isJsonAttachment: true };
+function hasAttachments(last: DisplayMessage | undefined, savedPreviewText: string | undefined): boolean {
+  if (last) {
+    if (last.attachments?.length) return true;
+    const c = last.content?.trim() ?? '';
+    if (c.startsWith('{') && c.includes('"attachments"')) return true;
   }
+  if (savedPreviewText) {
+    const t = savedPreviewText.trim();
+    if (t.startsWith('{') && t.includes('"attachments"')) return true;
+  }
+  return false;
 }
 
 const FIND_USER_DEBOUNCE_MS = 1000;
@@ -159,30 +140,14 @@ export function Sidebar({ chatIds }: SidebarProps) {
           const last = list.length > 0 ? list[list.length - 1] : undefined;
           const serverLastTime = state.chatLastMessageTime[chatId];
           const savedPreview = state.chatLastMessagePreview[chatId];
-          const parsedSaved = parsePreviewAttachmentKind(savedPreview?.text);
-          const kindFromSaved = savedPreview?.attachmentKind ?? parsedSaved.kind;
-          const kind = last ? lastMessageAttachmentKind(last) : kindFromSaved;
-          const rawPreview =
-            kind === 'voice'
-              ? null
-              : kind === 'image'
-                ? 'Изображение'
-                : last
-                  ? last.content.slice(0, 30) + (last.content.length > 30 ? '…' : '')
-                  : kindFromSaved === 'image'
-                    ? 'Изображение'
-                    : kindFromSaved === 'voice'
-                      ? null
-                      : parsedSaved.isJsonAttachment
-                        ? 'Вложение'
-                        : savedPreview?.text ?? (serverLastTime ? 'Сообщение' : 'Нет сообщений');
           const isOwn = last?.isOwn ?? savedPreview?.isOwn ?? false;
-          const previewText =
-            rawPreview != null
-              ? (isOwn ? `Вы: ${rawPreview}` : rawPreview)
-              : kind === 'voice'
-                ? (isOwn ? 'Вы: ' : '')
-                : '';
+          const hasAtt = hasAttachments(last, savedPreview?.text);
+          const rawPreview =
+            last
+              ? last.content.slice(0, 30) + (last.content.length > 30 ? '…' : '')
+              : savedPreview?.text ?? (serverLastTime ? 'Сообщение' : 'Нет сообщений');
+          const previewLabel = hasAtt ? 'Вложение' : rawPreview;
+          const previewText = isOwn ? `Вы: ${previewLabel}` : previewLabel;
           const timeStr = last
             ? formatChatListTime(last.timestamp)
             : serverLastTime
@@ -215,19 +180,7 @@ export function Sidebar({ chatIds }: SidebarProps) {
                 {unreadBadge}
               </span>
               <span className="chat-preview-row">
-                {kind === 'voice' ? (
-                  <span className="chat-preview chat-preview-voice">
-                    {previewText}
-                    <svg className="chat-preview-mic-icon" viewBox="0 0 24 24" aria-hidden>
-                      <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z" fill="currentColor" />
-                      <path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z" fill="currentColor" />
-                    </svg>
-                  </span>
-                ) : kind === 'image' ? (
-                  <span className="chat-preview chat-preview-image">{previewText}</span>
-                ) : (
-                  <span className="chat-preview">{previewText}</span>
-                )}
+                <span className={`chat-preview${hasAtt ? ' chat-preview-attachment' : ''}`}>{previewText}</span>
                 <span className="chat-time">{timeStr}</span>
               </span>
             </li>

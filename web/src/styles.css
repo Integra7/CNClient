@@ -583,7 +583,7 @@ h1 {
   color: var(--text-muted);
 }
 
-#chat-list .chat-preview-image {
+#chat-list .chat-preview-attachment {
   font-style: italic;
 }
 
