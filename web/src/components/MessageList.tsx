@@ -147,6 +147,9 @@ export function MessageList({ chatId, isCompose }: MessageListProps) {
                   onToggleSelect={() => {}}
                   insideBlock
                   onScrollToMessage={scrollToMessage}
+                  messagesInChat={list}
+                  chatId={chatId}
+                  chatNames={state.chatNames}
                 />
               ))}
               <div className="forwarded-block-meta">
@@ -169,6 +172,9 @@ export function MessageList({ chatId, isCompose }: MessageListProps) {
                 }
                 insideBlock={false}
                 onScrollToMessage={scrollToMessage}
+                messagesInChat={list}
+                chatId={chatId}
+                chatNames={state.chatNames}
               />
             ))}
           </React.Fragment>
@@ -187,6 +193,9 @@ function MessageBubble({
   onToggleSelect,
   insideBlock,
   onScrollToMessage,
+  messagesInChat = [],
+  chatId,
+  chatNames = {},
 }: {
   m: DisplayMessage;
   readThreshold: number;
@@ -194,6 +203,9 @@ function MessageBubble({
   onToggleSelect: () => void;
   insideBlock: boolean;
   onScrollToMessage?: (messageId: string) => void;
+  messagesInChat?: DisplayMessage[];
+  chatId?: string;
+  chatNames?: Record<string, string>;
 }) {
   const isUnread = !m.isOwn && m.timestamp > readThreshold;
   const statusText =
@@ -217,6 +229,10 @@ function MessageBubble({
       <div className="message-reply-preview">
         {m.replyTo.map((r) => {
           const text = r.content.length > REPLY_PREVIEW_MAX_LEN ? r.content.slice(0, REPLY_PREVIEW_MAX_LEN) + '…' : r.content;
+          const originalMsg = messagesInChat.find((msg) => msg.id === r.messageId);
+          const displayName =
+            originalMsg?.senderUsername ??
+            (originalMsg && !originalMsg.isOwn && chatId ? (chatNames[chatId] ?? r.senderName) : r.senderName);
           return (
             <div
               key={r.messageId}
@@ -234,7 +250,7 @@ function MessageBubble({
                 }
               }}
             >
-              <span className="reply-preview-sender">{escapeHtml(r.senderName)}:</span>
+              <span className="reply-preview-sender">{escapeHtml(displayName)}:</span>
               <span className="reply-preview-content">{escapeHtml(text)}</span>
               <span className="reply-preview-time">{formatTime(r.timestamp)}</span>
             </div>
