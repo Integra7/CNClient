@@ -3,14 +3,17 @@ import type { AppState, AppAction } from './types';
 
 type Dispatch = (action: AppAction) => void;
 
+/**
+ * Определение пересланного сообщения — только по isForwarded === true.
+ * Наличие полей forwardFrom* не учитывается: для обычных сообщений бэкенд их не присылает,
+ * но решение «пересланное или нет» принимается только по isForwarded.
+ */
 function mapForwardFrom(m: {
   isForwarded?: boolean;
   forwardFromSenderId?: string | null;
   forwardFromSenderName?: string | null;
   forwardFromTimestamp?: number | null;
 }): DisplayMessage['forwardFrom'] | undefined {
-  // Показываем как пересланное только при явном isForwarded === true (именно boolean).
-  // Строка "false" в JS truthy, поэтому !m.isForwarded не отсекает её — проверяем строго.
   if (m.isForwarded !== true) return undefined;
   return {
     senderId: m.forwardFromSenderId ?? '',
