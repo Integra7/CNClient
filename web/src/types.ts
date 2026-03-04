@@ -27,6 +27,15 @@ export interface PendingMessage {
   sentAt: number;
 }
 
+/** Элемент replyToData — сообщение, на которое отвечают */
+export interface ReplyToMessage {
+  messageId: string;
+  senderId: string;
+  senderName: string;
+  content: string;
+  timestamp: number;
+}
+
 export interface DisplayMessage {
   id: string;
   clientMessageId?: string;
@@ -41,6 +50,8 @@ export interface DisplayMessage {
   editedAt?: number;
   forwardFrom?: { senderId: string; senderName: string; originalTimestamp?: number };
   forwardBatchId?: string;
+  /** Сообщения, на которые отвечает это сообщение */
+  replyTo?: ReplyToMessage[];
 }
 
 export interface CreateUserPayload {
@@ -84,4 +95,6 @@ export interface MessageFromServer {
   forwardFromTimestamp?: number | null;
   /** Один id на всю пачку пересланных (одно действие пересылки) */
   forwardBatchId?: string | null;
+  /** JSON-строка массива ReplyToMessage — сообщения, на которые отвечают */
+  replyToData?: string | null;
 }

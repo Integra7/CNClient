@@ -1,7 +1,27 @@
-import type { ServerMessage, DisplayMessage, MessageFromServer, ChatFromServer } from '../types';
+import type { ServerMessage, DisplayMessage, MessageFromServer, ChatFromServer, ReplyToMessage } from '../types';
 import type { AppState, AppAction } from './types';
 
 type Dispatch = (action: AppAction) => void;
+
+function parseReplyToData(replyToData: string | null | undefined): ReplyToMessage[] | undefined {
+  if (replyToData == null || replyToData === '') return undefined;
+  try {
+    const arr = JSON.parse(replyToData) as unknown;
+    if (!Array.isArray(arr) || arr.length === 0) return undefined;
+    return arr.map((item: unknown) => {
+      const o = item as Record<string, unknown>;
+      return {
+        messageId: String(o.messageId ?? ''),
+        senderId: String(o.senderId ?? ''),
+        senderName: String(o.senderName ?? ''),
+        content: String(o.content ?? ''),
+        timestamp: Number(o.timestamp ?? 0),
+      };
+    });
+  } catch {
+    return undefined;
+  }
+}
 
 /**
  * Определение пересланного сообщения — только по isForwarded === true.
@@ -189,6 +209,7 @@ export function createServerMessageHandler(
                 m.forwardBatchId != null && m.forwardBatchId !== ''
                   ? m.forwardBatchId
                   : undefined,
+              replyTo: parseReplyToData(sm.replyToData),
             });
           }
           const merged = [...list];
@@ -259,6 +280,7 @@ export function createServerMessageHandler(
           forwardFromSenderName?: string | null;
           forwardFromTimestamp?: number | null;
           forwardBatchId?: string | null;
+          replyToData?: string | null;
         };
         const list = state.messagesByChat[msg.chatId] ?? [];
         const existing = list.some(
@@ -305,6 +327,7 @@ export function createServerMessageHandler(
             extendedMsg.forwardBatchId != null && extendedMsg.forwardBatchId !== ''
               ? extendedMsg.forwardBatchId
               : undefined,
+          replyTo: parseReplyToData(extendedMsg.replyToData),
         };
 
         dispatch({

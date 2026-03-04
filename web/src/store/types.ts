@@ -30,6 +30,8 @@ export interface AppState {
   lastReadByChat: Record<string, number>;
   unreadByChat: Record<string, number>;
   selectedMessageIds: string[];
+  /** Id сообщений, на которые пользователь вводит ответ (режим «Ответить») */
+  replyingToMessageIds: string[];
   deletedMessageIdsForMe: string[];
   deletedChatIdsForMe: string[];
   findUser: FindUserState;
@@ -72,6 +74,7 @@ export type AppAction =
   | { type: 'CLEAR_UNREAD'; payload: string }
   | { type: 'TOGGLE_MESSAGE_SELECTION'; payload: string }
   | { type: 'CLEAR_SELECTION' }
+  | { type: 'SET_REPLYING_TO'; payload: string[] | null }
   | { type: 'DELETE_MESSAGE_FOR_ME'; payload: string }
   | { type: 'DELETE_MESSAGE_FROM_CHAT'; payload: { chatId: string; messageId: string } }
   | { type: 'DELETE_CHAT_FOR_ME'; payload: string }

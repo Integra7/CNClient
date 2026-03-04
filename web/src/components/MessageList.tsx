@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useMemo } from 'react';
+import React, { useEffect, useRef, useMemo, useCallback } from 'react';
 import { useApp } from '../context/AppContext';
 import type { DisplayMessage } from '../types';
 import { formatTime, escapeHtml } from '../utils/format';
@@ -26,16 +26,19 @@ export function MessageList({ chatId, isCompose }: MessageListProps) {
 
   const combined = useMemo(() => {
     const filtered = list.filter((m) => !state.deletedMessageIdsForMe.includes(m.id));
-    const fromPending: DisplayMessage[] = pendingList.map((p) => ({
-      id: p.clientMessageId,
-      clientMessageId: p.clientMessageId,
-      chatId: p.chatId,
-      senderId: state.currentUserId,
-      content: p.content,
-      timestamp: p.sentAt,
-      status: p.status,
-      isOwn: true,
-    }));
+    const existingIds = new Set(filtered.map((m) => m.id));
+    const fromPending: DisplayMessage[] = pendingList
+      .filter((p) => !existingIds.has(p.clientMessageId))
+      .map((p) => ({
+        id: p.clientMessageId,
+        clientMessageId: p.clientMessageId,
+        chatId: p.chatId,
+        senderId: state.currentUserId,
+        content: p.content,
+        timestamp: p.sentAt,
+        status: p.status,
+        isOwn: true,
+      }));
     return [...filtered, ...fromPending].sort((a, b) => {
       const t = a.timestamp - b.timestamp;
       if (t !== 0) return t;
@@ -82,6 +85,15 @@ export function MessageList({ chatId, isCompose }: MessageListProps) {
     () => new Set(state.selectedMessageIds),
     [state.selectedMessageIds]
   );
+
+  const scrollToMessage = useCallback((messageId: string) => {
+    const el = containerRef.current?.querySelector(`[data-message-id="${messageId}"]`);
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      el.classList.add('message-highlight');
+      setTimeout(() => el.classList.remove('message-highlight'), 2000);
+    }
+  }, []);
 
   useEffect(() => {
     containerRef.current && (containerRef.current.scrollTop = containerRef.current.scrollHeight);
@@ -134,6 +146,7 @@ export function MessageList({ chatId, isCompose }: MessageListProps) {
                   selected={selectedSet.has(m.id)}
                   onToggleSelect={() => {}}
                   insideBlock
+                  onScrollToMessage={scrollToMessage}
                 />
               ))}
               <div className="forwarded-block-meta">
@@ -155,6 +168,7 @@ export function MessageList({ chatId, isCompose }: MessageListProps) {
                   dispatch({ type: 'TOGGLE_MESSAGE_SELECTION', payload: m.id })
                 }
                 insideBlock={false}
+                onScrollToMessage={scrollToMessage}
               />
             ))}
           </React.Fragment>
@@ -164,18 +178,22 @@ export function MessageList({ chatId, isCompose }: MessageListProps) {
   );
 }
 
+const REPLY_PREVIEW_MAX_LEN = 50;
+
 function MessageBubble({
   m,
   readThreshold,
   selected,
   onToggleSelect,
   insideBlock,
+  onScrollToMessage,
 }: {
   m: DisplayMessage;
   readThreshold: number;
   selected: boolean;
   onToggleSelect: () => void;
   insideBlock: boolean;
+  onScrollToMessage?: (messageId: string) => void;
 }) {
   const isUnread = !m.isOwn && m.timestamp > readThreshold;
   const statusText =
@@ -194,6 +212,37 @@ function MessageBubble({
   const forwardedBy = m.senderUsername
     ? `Переслал: ${escapeHtml(m.senderUsername)}`
     : '';
+  const replyPreview =
+    m.replyTo && m.replyTo.length > 0 ? (
+      <div className="message-reply-preview">
+        {m.replyTo.map((r) => {
+          const text = r.content.length > REPLY_PREVIEW_MAX_LEN ? r.content.slice(0, REPLY_PREVIEW_MAX_LEN) + '…' : r.content;
+          return (
+            <div
+              key={r.messageId}
+              className="message-reply-preview-item"
+              role="button"
+              tabIndex={0}
+              onClick={(e) => {
+                e.stopPropagation();
+                onScrollToMessage?.(r.messageId);
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  onScrollToMessage?.(r.messageId);
+                }
+              }}
+            >
+              <span className="reply-preview-sender">{escapeHtml(r.senderName)}:</span>
+              <span className="reply-preview-content">{escapeHtml(text)}</span>
+              <span className="reply-preview-time">{formatTime(r.timestamp)}</span>
+            </div>
+          );
+        })}
+      </div>
+    ) : null;
+
   const forwardLines = m.forwardFrom && (
     <div className="message-forward-from">
       {forwardedBy ? (
@@ -214,6 +263,7 @@ function MessageBubble({
 
   const content = (
     <>
+      {replyPreview}
       {forwardLines}
       <span className="content">{escapeHtml(m.content)}</span>
       {!insideBlock ? (

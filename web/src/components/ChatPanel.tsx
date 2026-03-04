@@ -1,6 +1,7 @@
 import { useEffect, useRef, useCallback } from 'react';
 import { useApp } from '../context/AppContext';
 import { shortId } from '../utils/format';
+import type { ReplyToMessage } from '../types';
 import { MessageList } from './MessageList';
 import { SelectionToolbar } from './SelectionToolbar';
 
@@ -23,7 +24,7 @@ export function ChatPanel({ chatIds }: ChatPanelProps) {
 
   useEffect(() => {
     messageInputRef.current?.focus();
-  }, [selectedChatId, composeToUsername]);
+  }, [selectedChatId, composeToUsername, state.replyingToMessageIds.length]);
 
   const backToChatList = useCallback(() => {
     dispatch({ type: 'BACK_TO_LIST' });
@@ -61,6 +62,56 @@ export function ChatPanel({ chatIds }: ChatPanelProps) {
     }
 
     if (!selectedChatId) return;
+    const list = state.messagesByChat[selectedChatId] ?? [];
+    const replyingToIds = state.replyingToMessageIds;
+
+    if (replyingToIds.length > 0) {
+      dispatch({
+        type: 'ADD_PENDING',
+        payload: {
+          clientMessageId,
+          content,
+          chatId: selectedChatId,
+          status: 'sending',
+          sentAt: Date.now(),
+        },
+      });
+      const replyTo: ReplyToMessage[] = replyingToIds
+        .map((id) => list.find((m) => m.id === id))
+        .filter((m): m is NonNullable<typeof m> => m != null)
+        .sort((a, b) => a.timestamp - b.timestamp)
+        .map((m) => ({
+          messageId: m.id,
+          senderId: m.senderId,
+          senderName: m.senderUsername ?? shortId(m.senderId),
+          content: m.content,
+          timestamp: m.timestamp,
+        }));
+      const newMsg = {
+        id: clientMessageId,
+        clientMessageId,
+        chatId: selectedChatId,
+        senderId: state.currentUserId,
+        content,
+        timestamp: Date.now(),
+        status: 'sending' as const,
+        isOwn: true,
+        replyTo,
+      };
+      dispatch({
+        type: 'MERGE_MESSAGES',
+        payload: {
+          chatId: selectedChatId,
+          messages: [...list, newMsg].sort((a, b) => a.timestamp - b.timestamp),
+        },
+      });
+      dispatch({ type: 'SET_REPLYING_TO', payload: null });
+      dispatch({ type: 'CLEAR_SELECTION' });
+      wsClientRef.current.replyToMessages(selectedChatId, replyingToIds, content, clientMessageId);
+      if (input) input.value = '';
+      return;
+    }
+
     dispatch({
       type: 'ADD_PENDING',
       payload: {
@@ -71,7 +122,6 @@ export function ChatPanel({ chatIds }: ChatPanelProps) {
         sentAt: Date.now(),
       },
     });
-    const list = state.messagesByChat[selectedChatId] ?? [];
     const newMsg = {
       id: clientMessageId,
       clientMessageId,
@@ -96,6 +146,7 @@ export function ChatPanel({ chatIds }: ChatPanelProps) {
     selectedChatId,
     state.currentUserId,
     state.messagesByChat,
+    state.replyingToMessageIds,
     dispatch,
     wsClientRef,
   ]);
@@ -122,12 +173,32 @@ export function ChatPanel({ chatIds }: ChatPanelProps) {
           isCompose={!!composeToUsername && !selectedChatId}
         />
       </div>
+      {state.replyingToMessageIds.length > 0 ? (
+        <div className="reply-mode-hint">
+          <span className="reply-mode-label">
+            Ответ на {state.replyingToMessageIds.length}{' '}
+            {state.replyingToMessageIds.length === 1 ? 'сообщение' : 'сообщений'}
+          </span>
+          <button
+            type="button"
+            className="reply-mode-cancel"
+            aria-label="Отменить ответ"
+            onClick={() => dispatch({ type: 'SET_REPLYING_TO', payload: null })}
+          >
+            ×
+          </button>
+        </div>
+      ) : null}
       <div className="send-row">
         <input
           ref={messageInputRef}
           id="message-input"
           type="text"
-          placeholder="Сообщение..."
+          placeholder={
+            state.replyingToMessageIds.length > 0
+              ? `Ответ на ${state.replyingToMessageIds.length} сообщ.`
+              : 'Сообщение...'
+          }
           onKeyDown={(e) => {
             if (e.key === 'Enter' && !e.shiftKey) {
               e.preventDefault();

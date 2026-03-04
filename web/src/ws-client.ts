@@ -215,6 +215,16 @@ export class ChatWsClient {
     });
   }
 
+  replyToMessages(chatId: string, messageIds: string[], replyContent: string, clientMessageId: string): void {
+    this.send({
+      type: 'reply_to_messages',
+      chatId,
+      content: JSON.stringify({ messageIds, replyContent }),
+      clientMessageId,
+    });
+    this.setAckTimeout(clientMessageId);
+  }
+
   get connected(): boolean {
     return this.ws?.readyState === WebSocket.OPEN;
   }

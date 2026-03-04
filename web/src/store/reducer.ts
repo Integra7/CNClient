@@ -33,6 +33,7 @@ export const initialAppState: AppState = {
   lastReadByChat: {},
   unreadByChat: {},
   selectedMessageIds: [],
+  replyingToMessageIds: [],
   deletedMessageIdsForMe: [],
   deletedChatIdsForMe: [],
   findUser: { status: 'idle', users: [], pendingOpenUsername: null },
@@ -275,7 +276,9 @@ export function appReducer(state: AppState, action: AppAction): AppState {
       return { ...state, selectedMessageIds: Array.from(set) };
     }
     case 'CLEAR_SELECTION':
-      return { ...state, selectedMessageIds: [] };
+      return { ...state, selectedMessageIds: [], replyingToMessageIds: [] };
+    case 'SET_REPLYING_TO':
+      return { ...state, replyingToMessageIds: action.payload ?? [] };
 
     case 'DELETE_MESSAGE_FOR_ME':
       return {

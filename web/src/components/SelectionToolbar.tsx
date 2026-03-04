@@ -31,6 +31,11 @@ export function SelectionToolbar() {
     dispatch({ type: 'OPEN_MODAL_FORWARD' });
   };
 
+  const startReply = () => {
+    if (!state.selectedMessageIds.length || !selectedChatId) return;
+    dispatch({ type: 'SET_REPLYING_TO', payload: state.selectedMessageIds });
+  };
+
   const openEditModal = () => {
     if (state.selectedMessageIds.length !== 1 || !selectedChatId || !singleId) return;
     const msg = list.find((m) => m.id === singleId);
@@ -62,6 +67,9 @@ export function SelectionToolbar() {
         </button>
         <button type="button" onClick={openForwardModal}>
           Переслать
+        </button>
+        <button type="button" onClick={startReply}>
+          Ответить
         </button>
         <button
           type="button"
