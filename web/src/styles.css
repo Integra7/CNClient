@@ -804,11 +804,13 @@ h1 {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 8px 12px;
-  background: rgba(248, 113, 113, 0.15);
-  border-bottom: 1px solid var(--border);
-  font-size: 12px;
+  padding: 10px 12px;
+  min-height: 44px;
+  background: rgba(248, 113, 113, 0.2);
+  border-bottom: 1px solid var(--error);
+  font-size: 13px;
   color: var(--error);
+  flex-shrink: 0;
 }
 
 .upload-error button {
@@ -846,9 +848,15 @@ h1 {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-  padding: 8px 12px;
+  padding: 10px 12px;
+  min-height: 52px;
   background: var(--surface);
   border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.pending-attachments.uploading {
+  background: rgba(167, 139, 250, 0.08);
 }
 
 .pending-attachment-chip {

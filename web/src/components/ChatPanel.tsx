@@ -48,12 +48,13 @@ export function ChatPanel({ chatIds }: ChatPanelProps) {
       : '';
 
   const handleFileSelect = useCallback(
-    async (e: React.ChangeEvent<HTMLInputElement>) => {
+    (e: React.ChangeEvent<HTMLInputElement>) => {
       const files = e.target.files;
       if (!files?.length || !canAttach) return;
-      e.target.value = '';
-      setUploadError(null);
       const fileList = Array.from(files);
+      e.target.value = '';
+
+      setUploadError(null);
       for (const file of fileList) {
         const v = validateFile(file);
         if (!v.valid) {
@@ -61,30 +62,36 @@ export function ChatPanel({ chatIds }: ChatPanelProps) {
           return;
         }
       }
+
       const withPreview = fileList.map((file) => ({
         file,
         previewUrl: file.type.startsWith('image/') ? URL.createObjectURL(file) : null,
         progress: 0,
       }));
       setUploadingFiles(withPreview);
-      try {
-        const uploaded = await uploadFiles(fileList, (fileIndex, percent) => {
-          setUploadingFiles((prev) =>
-            prev.map((item, i) => (i === fileIndex ? { ...item, progress: percent } : item))
-          );
-        });
-        setPendingAttachments((prev) => [...prev, ...uploaded]);
-        withPreview.forEach((item) => {
-          if (item.previewUrl) URL.revokeObjectURL(item.previewUrl);
-        });
-        setUploadingFiles([]);
-      } catch (err) {
-        setUploadError(err instanceof Error ? err.message : 'Ошибка загрузки');
-        withPreview.forEach((item) => {
-          if (item.previewUrl) URL.revokeObjectURL(item.previewUrl);
-        });
-        setUploadingFiles([]);
-      }
+
+      // Запуск загрузки после отрисовки «Загрузка…», иначе UI не успевает обновиться
+      const doUpload = async () => {
+        try {
+          const uploaded = await uploadFiles(fileList, (fileIndex, percent) => {
+            setUploadingFiles((prev) =>
+              prev.map((item, i) => (i === fileIndex ? { ...item, progress: percent } : item))
+            );
+          });
+          setPendingAttachments((prev) => [...prev, ...uploaded]);
+          withPreview.forEach((item) => {
+            if (item.previewUrl) URL.revokeObjectURL(item.previewUrl);
+          });
+          setUploadingFiles([]);
+        } catch (err) {
+          setUploadError(err instanceof Error ? err.message : String(err));
+          withPreview.forEach((item) => {
+            if (item.previewUrl) URL.revokeObjectURL(item.previewUrl);
+          });
+          setUploadingFiles([]);
+        }
+      };
+      setTimeout(doUpload, 0);
     },
     [canAttach]
   );
