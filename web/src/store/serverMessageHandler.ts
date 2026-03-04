@@ -106,13 +106,13 @@ export function createServerMessageHandler(
       callType === 'call_hangup_ok' ||
       callType === 'call_media'
     ) {
-      if (callType === 'call_offer' && msg.callId && msg.callerId != null && msg.callerUsername != null) {
+      if (callType === 'call_offer' && msg.callId && msg.callerId != null) {
         dispatch({
           type: 'CALL_INCOMING',
           payload: {
             callId: msg.callId,
             callerId: msg.callerId,
-            callerUsername: msg.callerUsername,
+            callerUsername: msg.callerUsername ?? shortIdFn(msg.callerId),
             sdp: msg.sdp ?? '',
           },
         });
