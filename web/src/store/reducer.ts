@@ -530,6 +530,7 @@ export function appReducer(state: AppState, action: AppAction): AppState {
         callStatus: 'outgoing',
         callId: action.payload.callId,
         callError: null,
+        callStartTime: Date.now(),
       };
     case 'CALL_ANSWER':
     case 'CALL_ANSWER_SENT':
