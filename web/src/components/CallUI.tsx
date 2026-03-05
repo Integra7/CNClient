@@ -65,8 +65,8 @@ export function CallUI() {
               type="button"
               className="call-btn call-btn-accept call-btn-icon-only"
               onClick={() => {
-                const { callId } = state;
-                if (callId) callManagerRef.current?.acceptCall(callId);
+                const { callId, incomingOfferSdp } = state;
+                if (callId) callManagerRef.current?.acceptCall(callId, incomingOfferSdp ?? undefined);
               }}
               aria-label="Принять"
               title="Принять"
