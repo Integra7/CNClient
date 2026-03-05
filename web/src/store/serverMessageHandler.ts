@@ -104,7 +104,8 @@ export function createServerMessageHandler(
       callType === 'call_rejected' ||
       callType === 'call_hangup' ||
       callType === 'call_hangup_ok' ||
-      callType === 'call_media'
+      callType === 'call_media' ||
+      callType === 'call_ice'
     ) {
       if (callType === 'call_offer' && msg.callId && msg.callerId != null) {
         dispatch({
@@ -120,8 +121,8 @@ export function createServerMessageHandler(
         dispatch({ type: 'CALL_OFFER_SENT', payload: { callId: msg.callId } });
         callManager?.handleServerMessage('call_offer_sent', { callId: msg.callId });
       } else if (callType === 'call_answer' && msg.callId) {
-        dispatch({ type: 'CALL_ANSWER', payload: { callId: msg.callId, sdp: '' } });
-        callManager?.handleServerMessage('call_answer', { callId: msg.callId });
+        dispatch({ type: 'CALL_ANSWER', payload: { callId: msg.callId, sdp: msg.sdp ?? '' } });
+        callManager?.handleServerMessage('call_answer', { callId: msg.callId, sdp: msg.sdp });
       } else if (callType === 'call_answer_sent' && msg.callId) {
         dispatch({ type: 'CALL_ANSWER_SENT', payload: { callId: msg.callId } });
       } else if (callType === 'call_rejected' && msg.callId) {
@@ -135,6 +136,8 @@ export function createServerMessageHandler(
         callManager?.handleServerMessage('call_hangup_ok', { callId: msg.callId });
       } else if (callType === 'call_media' && msg.callId != null && msg.content !== undefined) {
         callManager?.handleServerMessage('call_media', { callId: msg.callId, content: msg.content });
+      } else if (callType === 'call_ice' && msg.callId != null && msg.iceCandidate != null) {
+        callManager?.handleServerMessage('call_ice', { callId: msg.callId, iceCandidate: msg.iceCandidate });
       }
       return;
     }
