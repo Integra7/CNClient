@@ -6,7 +6,7 @@ const getBackendUrl = (): string => {
     return 'ws://localhost:8080/chat';
   }
   const host = 'mercedem.serveousercontent.com';
-  return `wss://${host}/chat`;
+  return `ws://${host}/chat`;
 };
 
 export const WS_URL = getBackendUrl();
