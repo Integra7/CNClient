@@ -5,7 +5,7 @@ const getBackendUrl = (): string => {
   if (import.meta.env.DEV) {
     return 'ws://localhost:8080/chat';
   }
-  const host = 'driver-purchased-legs-bias.trycloudflare.com';
+  const host = 'a888758fc15543.lhr.life';
   return `wss://${host}/chat`;
 };
 
