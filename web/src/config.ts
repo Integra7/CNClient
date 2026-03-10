@@ -5,7 +5,7 @@ const getBackendUrl = (): string => {
   if (import.meta.env.DEV) {
     return 'ws://localhost:8080/chat';
   }
-  const host = 'cosanostra.serveo.net';
+  const host = 'mercedem.serveousercontent.com';
   return `wss://${host}/chat`;
 };
 
