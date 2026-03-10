@@ -27,7 +27,7 @@ export class ChatWsClient {
   }
 
   connect(token: string): void {
-    this.token = token;
+    this.token = token.trim();
     this.reconnectAttempts = 0;
     this.doConnect();
   }
@@ -35,7 +35,10 @@ export class ChatWsClient {
   private doConnect(): void {
     if (this.ws?.readyState === WebSocket.OPEN) return;
     this.onStateChange('connecting');
-    const url = `${WS_URL}?token=${encodeURIComponent(this.token)}`;
+    const normalizedToken = this.token.trim();
+    const url = normalizedToken
+      ? `${WS_URL}?token=${encodeURIComponent(normalizedToken)}`
+      : WS_URL;
     this.ws = new WebSocket(url);
 
     this.ws.onopen = () => {
