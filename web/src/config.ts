@@ -5,7 +5,7 @@ const getBackendUrl = (): string => {
   if (import.meta.env.DEV) {
     return 'ws://localhost:8080/chat';
   }
-  const host = 'a888758fc15543.lhr.life';
+  const host = 'cosnos.serveousercontent.com';
   return `wss://${host}/chat`;
 };
 
